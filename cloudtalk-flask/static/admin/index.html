@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - CloudTalk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#165DFF',dark:'#1D2129',light:'#F2F3F5'}}}}</script>
+    <style>
+        .tab-btn.active { color: #165DFF; border-bottom: 2px solid #165DFF; }
+        .toast { position: fixed; top: 1rem; right: 1rem; z-index: 1000; padding: 0.75rem 1.25rem; border-radius: 0.5rem; color: white; transition: opacity 0.3s; }
+    </style>
+</head>
+<body class="bg-light font-sans text-dark">
+
+<!-- ========== 登录界面 ========== -->
+<div id="loginScreen" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-lg">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 mx-auto bg-primary rounded-full flex items-center justify-center mb-4">
+                <i class="fa fa-shield text-white text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold">管理员登录</h1>
+            <p class="text-gray-500 text-sm mt-1">CloudTalk 管理后台</p>
+        </div>
+        <input type="text" id="adminUser" placeholder="管理员账号" class="w-full px-4 py-3 border rounded-lg mb-3">
+        <input type="password" id="adminPass" placeholder="管理员密码" class="w-full px-4 py-3 border rounded-lg mb-4">
+        <button onclick="adminLogin()" class="w-full bg-primary text-white py-3 rounded-lg hover:bg-primary/90 font-medium">
+            登 录
+        </button>
+        <p id="loginError" class="text-red-500 text-sm mt-3 text-center hidden"></p>
+        <p class="text-gray-400 text-xs text-center mt-4">默认账号: admin / admin123</p>
+    </div>
+</div>
+
+<!-- ========== 主界面 ========== -->
+<div id="mainScreen" class="hidden">
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="container mx-auto px-4 flex items-center justify-between h-16">
+            <div class="flex items-center space-x-4">
+                <a href="/" class="flex items-center space-x-2 no-underline">
+                    <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+                        <i class="fa fa-comments-o"></i>
+                    </div>
+                    <span class="text-lg font-bold text-dark">CloudTalk</span>
+                </a>
+                <span class="text-gray-300">|</span>
+                <span class="font-bold text-primary">管理后台</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="exportCurrentTab()" class="text-green-600 hover:text-green-800 no-underline text-sm">
+                    <i class="fa fa-download mr-1"></i>导出当前数据
+                </button>
+                <a href="/" class="text-gray-600 hover:text-primary no-underline">← 返回前台</a>
+                <button onclick="logoutAdmin()" class="text-red-500 hover:underline bg-transparent border-none cursor-pointer">退出</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6">
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl p-5 shadow-sm text-center">
+                <div class="text-3xl font-bold text-primary" id="statsUsers">-</div>
+                <div class="text-sm text-gray-500">用户数</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm text-center">
+                <div class="text-3xl font-bold text-green-500" id="statsPosts">-</div>
+                <div class="text-sm text-gray-500">帖子数</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm text-center">
+                <div class="text-3xl font-bold text-orange-500" id="statsComments">-</div>
+                <div class="text-sm text-gray-500">评论数</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm text-center">
+                <div class="text-3xl font-bold text-pink-500" id="statsFlowers">-</div>
+                <div class="text-sm text-gray-500">花朵数</div>
+            </div>
+        </div>
+
+        <!-- 标签页 -->
+        <div class="bg-white rounded-xl shadow-sm mb-4">
+            <div class="flex border-b overflow-x-auto">
+                <button class="tab-btn active px-4 py-3 font-medium whitespace-nowrap" onclick="switchTab('posts')">
+                    <i class="fa fa-file-text mr-1"></i>帖子管理
+                </button>
+                <button class="tab-btn px-4 py-3 font-medium text-gray-500 whitespace-nowrap" onclick="switchTab('comments')">
+                    <i class="fa fa-comments mr-1"></i>评论管理
+                </button>
+                <button class="tab-btn px-4 py-3 font-medium text-gray-500 whitespace-nowrap" onclick="switchTab('users')">
+                    <i class="fa fa-users mr-1"></i>用户管理
+                </button>
+                <button class="tab-btn px-4 py-3 font-medium text-gray-500 whitespace-nowrap" onclick="switchTab('announcements')">
+                    <i class="fa fa-bullhorn mr-1"></i>公告管理
+                </button>
+            </div>
+        </div>
+
+        <!-- 公告发布表单 -->
+        <div id="announceForm" class="bg-white rounded-xl shadow-sm p-4 mb-4 hidden">
+            <h3 class="font-bold mb-3">发布新公告</h3>
+            <input type="text" id="annTitle" placeholder="公告标题" class="w-full px-4 py-2 border rounded-lg mb-2">
+            <textarea id="annContent" rows="3" placeholder="公告内容" class="w-full px-4 py-2 border rounded-lg mb-2"></textarea>
+            <button onclick="publishAnnouncement()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">发布公告</button>
+        </div>
+
+        <!-- 内容区 -->
+        <div id="tabContent" class="bg-white rounded-xl shadow-sm p-4">
+            <div class="text-center py-10 text-gray-400">加载中...</div>
+        </div>
+    </main>
+</div>
+
+<script>
+// ========== 全局变量 ==========
+let adminToken = localStorage.getItem('adminToken');
+let currentActiveTab = 'posts'; 
+
+// ========== 页面加载 ==========
+if (adminToken) {
+    showMainScreen();
+}
+
+function showMainScreen() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainScreen').classList.remove('hidden');
+    loadStats();
+    switchTab('posts');
+}
+
+// ========== 登录 ==========
+async function adminLogin() {
+    const username = document.getElementById('adminUser').value.trim();
+    const password = document.getElementById('adminPass').value;
+
+    if (!username || !password) {
+        showLoginError('请输入账号和密码');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        // 先获取文本，判断是否 JSON
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('返回内容:', text.substring(0, 200));
+            showLoginError('服务器返回错误，请检查后端是否启动');
+            return;
+        }
+
+        if (data.status === 'success') {
+            adminToken = data.token;
+            localStorage.setItem('adminToken', adminToken);
+            showMainScreen();
+            showToast('登录成功', 'success');
+        } else {
+            showLoginError(data.msg || '登录失败');
+        }
+    } catch (e) {
+        console.error('登录错误:', e);
+        showLoginError('网络错误，请确认后端已启动');
+    }
+}
+
+function showLoginError(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+function logoutAdmin() {
+    localStorage.removeItem('adminToken');
+    location.reload();
+}
+
+// ========== 加载统计 ==========
+async function loadStats() {
+    try {
+        const res = await fetch('/api/admin/stats');
+        const data = await res.json();
+        document.getElementById('statsUsers').textContent = data.users || 0;
+        document.getElementById('statsPosts').textContent = data.posts || 0;
+        document.getElementById('statsComments').textContent = data.comments || 0;
+        document.getElementById('statsFlowers').textContent = data.flowers || 0;
+    } catch (e) {
+        console.error('加载统计失败:', e);
+    }
+}
+
+// ========== 切换标签页 ==========
+function switchTab(tab) {
+    currentActiveTab = tab;
+    
+    // 移除所有活跃状态
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active', 'text-primary', 'border-b-2', 'border-primary');
+        b.classList.add('text-gray-500');
+    });
+
+    // 遍历找到对应按钮并高亮
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        const onclick = b.getAttribute('onclick');
+        if (onclick && onclick.includes(`'${tab}'`)) {
+            b.classList.add('active', 'text-primary', 'border-b-2', 'border-primary');
+            b.classList.remove('text-gray-500');
+        }
+    });
+
+    document.getElementById('announceForm').classList.toggle('hidden', tab !== 'announcements');
+    loadTabContent(tab);
+}
+
+async function loadTabContent(tab) {
+    const container = document.getElementById('tabContent');
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>';
+
+    try {
+        if (tab === 'posts') {
+            const res = await fetch('/api/admin/posts');
+            const posts = await res.json();
+            if (!posts.length) {
+                container.innerHTML = '<div class="text-center py-10 text-gray-400">暂无帖子</div>';
+                return;
+            }
+            container.innerHTML = `<table class="w-full"><thead><tr class="text-left text-gray-500 text-sm border-b"><th class="py-2">ID</th><th>标题</th><th>作者</th><th>时间</th><th>操作</th></tr></thead><tbody>
+                ${posts.map(p => `<tr class="border-b hover:bg-gray-50"><td class="py-2">${p.id}</td><td>${esc(p.title)}</td><td>${esc(p.author)}</td><td>${new Date(p.created_at).toLocaleDateString()}</td>
+                <td><button class="text-red-500 hover:underline" onclick="deletePost(${p.id})">删除</button></td></tr>`).join('')}
+            </tbody></table>`;
+        } else if (tab === 'comments') {
+            const res = await fetch('/api/admin/comments');
+            const comments = await res.json();
+            if (!comments.length) {
+                container.innerHTML = '<div class="text-center py-10 text-gray-400">暂无评论</div>';
+                return;
+            }
+            container.innerHTML = `<table class="w-full"><thead><tr class="text-left text-gray-500 text-sm border-b"><th class="py-2">ID</th><th>内容</th><th>作者</th><th>时间</th><th>操作</th></tr></thead><tbody>
+                ${comments.map(c => `<tr class="border-b hover:bg-gray-50"><td class="py-2">${c.id}</td><td class="max-w-xs truncate">${esc(c.content)}</td><td>${esc(c.author)}</td><td>${new Date(c.created_at).toLocaleDateString()}</td>
+                <td><button class="text-red-500 hover:underline" onclick="deleteComment(${c.id})">删除</button></td></tr>`).join('')}
+            </tbody></table>`;
+        } else if (tab === 'users') {
+            const res = await fetch('/api/admin/users');
+            const users = await res.json();
+            if (!users.length) {
+                container.innerHTML = '<div class="text-center py-10 text-gray-400">暂无用户</div>';
+                return;
+            }
+            container.innerHTML = `<table class="w-full"><thead><tr class="text-left text-gray-500 text-sm border-b"><th class="py-2">ID</th><th>用户名</th><th>注册时间</th><th>操作</th></tr></thead><tbody>
+                ${users.map(u => `<tr class="border-b hover:bg-gray-50"><td class="py-2">${u.id}</td><td>${esc(u.username)}</td><td>${new Date(u.created_at).toLocaleDateString()}</td>
+                <td><button class="text-red-500 hover:underline" onclick="deleteUser('${esc(u.username)}')">删除</button></td></tr>`).join('')}
+            </tbody></table>`;
+        } else if (tab === 'announcements') {
+            const res = await fetch('/api/announcements');
+            const anns = await res.json();
+            if (!anns.length) {
+                container.innerHTML = '<div class="text-center py-10 text-gray-400">暂无公告</div>';
+                return;
+            }
+            container.innerHTML = anns.map(a => `<div class="border-b py-3 flex justify-between"><div><h4 class="font-medium">${esc(a.title)}</h4><p class="text-sm text-gray-600 mt-1">${esc(a.content)}</p><span class="text-xs text-gray-400">${new Date(a.created_at).toLocaleString()}</span></div>
+                <button class="text-red-500 hover:underline text-sm" onclick="deleteAnnouncement(${a.id})">删除</button></div>`).join('');
+        }
+    } catch (e) {
+        console.error('加载失败:', e);
+        container.innerHTML = '<div class="text-center py-10 text-red-500">加载失败</div>';
+    }
+}
+
+// ========== 工具函数 ==========
+function esc(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2000);
+}
+
+// ========== CRUD ==========
+async function publishAnnouncement() {
+    const title = document.getElementById('annTitle').value.trim();
+    const content = document.getElementById('annContent').value.trim();
+    if (!title || !content) return alert('请填写完整');
+    const res = await fetch('/api/admin/announcements', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content })
+    });
+    const data = await res.json();
+    alert(data.msg);
+    if (data.status === 'success') {
+        document.getElementById('annTitle').value = '';
+        document.getElementById('annContent').value = '';
+        loadTabContent('announcements');
+    }
+}
+
+async function deletePost(id) {
+    if (!confirm('确定删除？')) return;
+    await fetch(`/api/admin/posts/${id}`, { method: 'DELETE' });
+    loadTabContent('posts');
+    loadStats();
+}
+
+async function deleteComment(id) {
+    if (!confirm('确定删除？')) return;
+    await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' });
+    loadTabContent('comments');
+    loadStats();
+}
+
+async function deleteUser(username) {
+    if (!confirm(`确定删除用户"${username}"？`)) return;
+    await fetch(`/api/admin/users/${encodeURIComponent(username)}`, { method: 'DELETE' });
+    loadTabContent('users');
+    loadStats();
+}
+
+async function deleteAnnouncement(id) {
+    if (!confirm('确定删除？')) return;
+    await fetch(`/api/admin/announcements/${id}`, { method: 'DELETE' });
+    loadTabContent('announcements');
+}
+
+
+function exportCurrentTab() {
+    let type = currentActiveTab;
+    if (type === 'announcements') {
+        showToast('公告暂不支持导出', 'error');
+        return;
+    }
+    
+    const link = document.createElement('a');
+    link.href = `/api/admin/export/${type}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('正在下载...', 'success');
+}
+</script>
+</body>
+</html>

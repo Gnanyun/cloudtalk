@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置 - CloudTalk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        .user-menu-wrapper { position: relative; }
+        .user-menu-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            width: 12rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            padding: 0.5rem 0;
+            z-index: 200;
+        }
+.user-menu-dropdown.show {
+    display: block;
+}
+    </style>
+</head>
+<body class="bg-light font-inter text-dark">
+
+<!-- 顶部导航栏 -->
+<header class="sticky top-0 z-40 bg-white shadow-sm">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between h-16">
+            <a href="/" class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white">
+                    <i class="fa fa-comments-o text-xl"></i>
+                </div>
+                <span class="text-xl font-bold">CloudTalk</span>
+            </a>
+            
+            <nav class="hidden md:flex space-x-6">
+                <a href="/" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">首页</a>
+                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">技术区</a>
+                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">创意区</a>
+                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">生活区</a>
+            </nav>
+            
+            <div class="flex items-center space-x-3">
+<div id="userMenu" class="relative user-menu-wrapper">
+    <button onclick="toggleUserMenu(event)" class="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:shadow-md transition-shadow">
+        <img id="topAvatar" src="/api/default-avatar?name=用户" alt="头像" class="w-full h-full object-cover">
+    </button>
+    <div id="userDropdown" class="user-menu-dropdown absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+        <a href="javascript:void(0)" onclick="goToPage('/profile')" class="block px-4 py-2 hover:bg-light">
+            <i class="fa fa-user mr-2"></i>个人中心
+        </a>
+        <a href="javascript:void(0)" onclick="goToPage('/notifications')" class="block px-4 py-2 hover:bg-light">
+            <i class="fa fa-bell mr-2"></i>消息通知
+        </a>
+        <a href="javascript:void(0)" onclick="goToPage('/settings')" class="block px-4 py-2 hover:bg-light">
+            <i class="fa fa-cog mr-2"></i>设置
+        </a>
+        <div class="border-t my-1"></div>
+        <a href="javascript:void(0)" onclick="logout()" class="block px-4 py-2 text-red-500 hover:bg-light">
+            <i class="fa fa-sign-out mr-2"></i>退出登录
+        </a>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- 主内容区 -->
+<main class="container mx-auto px-4 py-6">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-white rounded-xl shadow-sm divide-y divide-gray-100">
+            <!-- 账号设置 -->
+            <div class="p-6">
+                <h2 class="text-lg font-bold mb-4"><i class="fa fa-user-circle mr-2 text-primary"></i>账号设置</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">修改密码</span>
+                        <button onclick="alert('修改密码功能')" class="text-primary hover:underline">修改</button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">绑定邮箱</span>
+                        <button onclick="alert('绑定邮箱功能')" class="text-primary hover:underline">绑定</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 隐私设置 -->
+            <div class="p-6">
+                <h2 class="text-lg font-bold mb-4"><i class="fa fa-lock mr-2 text-primary"></i>隐私设置</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">公开我的收藏</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">允许他人通过邮箱找到我</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 通知设置 -->
+            <div class="p-6">
+                <h2 class="text-lg font-bold mb-4"><i class="fa fa-bell mr-2 text-primary"></i>通知设置</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">点赞通知</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">评论通知</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">关注通知</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 退出登录 -->
+            <div class="p-6">
+                <button onclick="logout()" class="w-full py-3 text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                    <i class="fa fa-sign-out mr-2"></i>退出登录
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+let currentUser = null;
+
+function checkAuth() {
+    const savedUser = localStorage.getItem('currentUser');
+    if (!savedUser) {
+        window.location.href = '/';
+        return false;
+    }
+    currentUser = JSON.parse(savedUser);
+    document.getElementById('topAvatar').src = currentUser.avatar || `/api/default-avatar?name=${currentUser.username}`;
+    return true;
+}
+
+function logout() {
+    localStorage.removeItem('currentUser');
+    window.location.href = '/';
+}
+
+window.onload = checkAuth;
+function toggleUserMenu(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('show');
+    }
+}
+
+function goToPage(url) {
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) {
+        dropdown.classList.remove('show');
+    }
+    window.location.href = url;
+}
+
+document.addEventListener('click', function(e) {
+    const userMenu = document.getElementById('userMenu');
+    const dropdown = document.getElementById('userDropdown');
+    if (userMenu && dropdown && !userMenu.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
+</script>
+</body>
+</html>

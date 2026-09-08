@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群组详情 - CloudTalk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        dark: '#1D2129',
+                        light: '#F2F3F5',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .modal.active { display: flex; }
+        .card-hover { transition: all 0.3s; }
+        .card-hover:hover { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .tab-btn.active { color: #165DFF; border-bottom: 2px solid #165DFF; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .chat-messages { max-height: 500px; overflow-y: auto; }
+        .chat-message { margin-bottom: 12px; }
+        .chat-message.mine { text-align: right; }
+        .chat-message.mine .chat-bubble { background: #165DFF; color: white; display: inline-block; }
+        .chat-message.other .chat-bubble { background: #F2F3F5; color: #1D2129; display: inline-block; }
+        .chat-bubble { padding: 10px 18px; border-radius: 18px; max-width: 75%; word-wrap: break-word; }
+    </style>
+</head>
+<body class="bg-light font-inter text-dark">
+
+<header class="sticky top-0 z-40 bg-white shadow-sm">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between h-16">
+            <a href="/" class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white">
+                    <i class="fa fa-comments-o text-xl"></i>
+                </div>
+                <span class="text-xl font-bold">CloudTalk</span>
+            </a>
+            
+            <nav class="hidden md:flex space-x-6">
+                <a href="/" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">首页</a>
+                <a href="#" class="px-1 py-2 font-medium text-primary" id="navGroupTab">群组</a>
+            </nav>
+            
+            <div id="userInfo" class="flex items-center space-x-3">
+                <img id="userAvatar" src="/api/default-avatar?name=用户" class="w-8 h-8 rounded-full">
+                <span id="userName" class="text-sm font-medium"></span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container mx-auto px-4 py-6">
+    <div id="groupContainer">
+        <div class="text-center py-10 text-gray-400">
+            <i class="fa fa-spinner fa-spin"></i> 加载中...
+        </div>
+    </div>
+</main>
+
+<script>
+let currentUser = null;
+let currentGroup = null;
+let currentTab = 'posts';  // posts | members | chat
+
+// 获取 URL 参数
+function getUrlParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+}
+
+// 初始化
+window.onload = async () => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+        try {
+            currentUser = JSON.parse(savedUser);
+            const userParam = getUrlParam('user');
+            if (userParam) {
+                currentUser = JSON.parse(decodeURIComponent(userParam));
+            }
+            document.getElementById('userAvatar').src = currentUser.avatar || `/api/default-avatar?name=${currentUser.username}`;
+            document.getElementById('userName').textContent = currentUser.username;
+        } catch(e) {}
+    }
+    
+    const groupId = getUrlParam('id');
+    if (groupId) {
+        await loadGroupDetail(groupId);
+    } else {
+        window.location.href = '/';
+    }
+};
+
+// 加载群组详情
+async function loadGroupDetail(groupId) {
+    try {
+        const res = await fetch(`/api/groups/${groupId}`);
+        const data = await res.json();
+        
+        if (data.status !== 'success') {
+            alert('群组不存在');
+            window.location.href = '/';
+            return;
+        }
+        
+        currentGroup = data.group;
+        document.getElementById('navGroupTab').textContent = currentGroup.name;
+        renderGroupPage();
+        switchTab('posts');
+    } catch (e) {
+        alert('加载失败');
+        window.location.href = '/';
+    }
+}
+
+// 渲染群组页面
+function renderGroupPage() {
+    const container = document.getElementById('groupContainer');
+    const isMember = currentUser && currentGroup.members.some(m => m.username === currentUser.username);
+    
+    container.innerHTML = `
+        <!-- 群组信息头部 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-2xl">
+                        ${currentGroup.name[0].toUpperCase()}
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">${currentGroup.name}</h1>
+                        <p class="text-gray-500 mt-1">${currentGroup.description || '暂无简介'}</p>
+                        <div class="flex items-center space-x-3 mt-2 text-sm text-gray-400">
+                            <span><i class="fa fa-user mr-1"></i>${currentGroup.member_count} 成员</span>
+                            <span><i class="fa fa-file-text mr-1"></i>${currentGroup.post_count} 帖子</span>
+                            <span>创建者：${currentGroup.creator}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <a href="/" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 no-underline">
+                        <i class="fa fa-arrow-left mr-1"></i>返回首页
+                    </a>
+                    ${currentUser ? (
+                        isMember ? `
+                            <button onclick="leaveGroup(${currentGroup.id})" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+                                <i class="fa fa-sign-out mr-1"></i>退出
+                            </button>
+                        ` : `
+                            <button onclick="joinGroup(${currentGroup.id})" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90">
+                                <i class="fa fa-plus mr-1"></i>加入群组
+                            </button>
+                        `
+                    ) : `
+                        <button onclick="redirectToLogin()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90">
+                            <i class="fa fa-sign-in mr-1"></i>登录后加入
+                        </button>
+                    `}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab切换栏 -->
+        <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <div class="flex overflow-x-auto">
+                <button id="tabPosts" class="tab-btn active whitespace-nowrap px-6 py-2 font-medium transition-colors" onclick="switchTab('posts')">
+                    最新发布
+                </button>
+                <button id="tabMembers" class="tab-btn whitespace-nowrap px-6 py-2 text-gray-600 font-medium transition-colors hover:text-primary" onclick="switchTab('members')">
+                    群组成员
+                </button>
+                <button id="tabChat" class="tab-btn whitespace-nowrap px-6 py-2 text-gray-600 font-medium transition-colors hover:text-primary" onclick="switchTab('chat')">
+                    群组聊天
+                </button>
+            </div>
+        </div>
+        
+        <!-- 内容区域 -->
+        <div id="tabContent" class="space-y-5">
+            <div class="text-center py-10 text-gray-400">
+                <i class="fa fa-spinner fa-spin"></i> 加载中...
+            </div>
+        </div>
+    `;
+}
+
+// 切换Tab
+function switchTab(tab) {
+    currentTab = tab;
+    
+    // 更新Tab样式
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.classList.add('text-gray-600');
+    });
+    const activeBtn = document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.classList.remove('text-gray-600');
+    }
+    
+    // 加载对应内容
+    if (tab === 'posts') loadGroupPosts(currentGroup.id);
+    else if (tab === 'members') renderMembersList();
+    else if (tab === 'chat') renderChatRoom();
+}
+
+// ========== 1. 帖子列表 ==========
+async function loadGroupPosts(groupId) {
+    const container = document.getElementById('tabContent');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>';
+    
+    try {
+        const res = await fetch(`/api/groups/${groupId}/posts`);
+        const posts = await res.json();
+        
+        if (!Array.isArray(posts) || posts.length === 0) {
+            container.innerHTML = `
+                <div class="bg-white rounded-xl p-8 text-center">
+                    <div class="text-5xl mb-4">📝</div>
+                    <p class="text-gray-500 mb-4">暂无帖子</p>
+                    <a href="/" class="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 no-underline">
+                        <i class="fa fa-plus mr-2"></i>去社区发帖
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = posts.map(post => `
+            <div class="bg-white rounded-xl shadow-sm p-5 card-hover cursor-pointer" onclick="goToTopic(${post.id})">
+                <div class="flex items-start">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                        <img src="${post.author_avatar || `/api/default-avatar?name=${encodeURIComponent(post.author)}`}" 
+                             class="w-full h-full object-cover"
+                             onerror="this.src='/api/default-avatar?name=${encodeURIComponent(post.author || '匿名')}'">
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <span class="font-medium text-sm text-gray-700">${post.author || '匿名'}</span>
+                                <h4 class="font-medium text-base mt-1">${post.title}</h4>
+                            </div>
+                            <span class="text-xs text-gray-400 whitespace-nowrap ml-2">${new Date(post.created_at).toLocaleString()}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">${post.content}</p>
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                            <span class="inline-flex items-center text-xs text-gray-500">
+                                <i class="fa fa-tag mr-1"></i>${post.tags || '话题'}
+                            </span>
+                            <div class="flex items-center space-x-4">
+                                <span class="flex items-center text-gray-500 text-sm"><i class="fa fa-eye mr-1"></i>${post.views || 0}</span>
+                                <span class="flex items-center text-gray-500 text-sm"><i class="fa fa-comment-o mr-1"></i>${post.comments || 0}</span>
+                                <span class="flex items-center text-gray-500 text-sm"><i class="fa fa-heart-o mr-1"></i>${post.likes || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败，请刷新重试</div>';
+    }
+}
+
+// ========== 2. 成员列表 ==========
+function renderMembersList() {
+    const container = document.getElementById('tabContent');
+    if (!container) return;
+    
+    if (!currentGroup || !currentGroup.members) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-gray-500">暂无成员</div>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-lg">群组成员（${currentGroup.members.length}人）</h3>
+                <span class="text-sm text-gray-400">成员列表</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${currentGroup.members.map(member => `
+                    <div class="flex items-center space-x-3 p-4 rounded-lg hover:bg-light border border-gray-100">
+                        <img src="${member.avatar || `/api/default-avatar?name=${member.username}`}" 
+                             class="w-12 h-12 rounded-full object-cover"
+                             onerror="this.src='/api/default-avatar?name=${member.username}'">
+                        <div>
+                            <p class="font-medium text-sm">${member.username}</p>
+                            <p class="text-xs ${member.role === 'admin' ? 'text-primary' : member.role === 'moderator' ? 'text-secondary' : 'text-gray-400'}">
+                                ${member.role === 'admin' ? '👑 群主' : member.role === 'moderator' ? '⭐ 管理员' : '成员'}
+                            </p>
+                            <p class="text-xs text-gray-400 mt-1">
+                                加入于 ${new Date(member.joined_at).toLocaleDateString()}
+                            </p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// ========== 3. 群组聊天 ==========
+function renderChatRoom() {
+    const container = document.getElementById('tabContent');
+    if (!container) return;
+    
+    const isMember = currentUser && currentGroup.members.some(m => m.username === currentUser.username);
+    
+    if (!isMember) {
+        container.innerHTML = `
+            <div class="bg-white rounded-xl p-8 text-center">
+                <div class="text-5xl mb-4">💬</div>
+                <p class="text-gray-500 mb-4">加入群组后才能参与聊天</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <!-- 聊天头部 -->
+            <div class="px-6 py-4 border-b border-gray-100 bg-light">
+                <h3 class="font-bold">群组聊天</h3>
+                <p class="text-xs text-gray-400">${currentGroup.members.length} 位成员</p>
+            </div>
+            
+            <!-- 聊天消息区域 -->
+            <div id="chatMessages" class="chat-messages p-6">
+                <div class="text-center text-gray-400 text-sm mb-4">
+                    — 欢迎来到${currentGroup.name}聊天室 —
+                </div>
+            </div>
+            
+            <!-- 聊天输入框 -->
+            <div class="px-6 py-4 border-t border-gray-100 bg-light">
+                <div class="flex space-x-2">
+                    <input type="text" id="chatInput" placeholder="输入消息..." 
+                           class="flex-1 px-4 py-3 border rounded-full focus:outline-none focus:ring-2 focus:ring-primary/20"
+                           onkeypress="if(event.key==='Enter') sendChatMessage(${currentGroup.id})">
+                    <button onclick="sendChatMessage(${currentGroup.id})" 
+                            class="bg-primary text-white px-6 py-3 rounded-full hover:bg-primary/90">
+                        <i class="fa fa-send"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 加载聊天历史
+    loadChatHistory(currentGroup.id);
+}
+
+// 加载聊天历史
+async function loadChatHistory(groupId) {
+    try {
+        const res = await fetch(`/api/groups/${groupId}/chat`);
+        const messages = await res.json();
+        renderChatMessages(messages);
+    } catch (e) {
+        console.error('加载聊天失败:', e);
+    }
+}
+
+// 渲染聊天消息
+function renderChatMessages(messages) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+    
+    if (!messages || messages.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-400 text-sm mb-4">
+                — 欢迎来到${currentGroup.name}聊天室 —
+            </div>
+            <div class="text-center text-gray-400 text-sm">暂无消息，发送第一条消息吧！</div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="text-center text-gray-400 text-sm mb-4">
+            — 欢迎来到${currentGroup.name}聊天室 —
+        </div>
+        ${messages.map(msg => {
+        const isMine = currentUser && msg.username === currentUser.username;
+        return `
+            <div class="chat-message ${isMine ? 'mine' : 'other'}">
+                ${!isMine ? `<p class="text-xs text-gray-400 mb-1 ml-1">${msg.username}</p>` : ''}
+                <div class="chat-bubble">${msg.content}</div>
+                <p class="text-xs text-gray-400 mt-1 ${isMine ? 'text-right mr-1' : 'ml-1'}">
+                    ${new Date(msg.created_at).toLocaleTimeString()}
+                </p>
+            </div>
+        `;
+    }).join('')}
+    `;
+    
+    // 滚动到底部
+    container.scrollTop = container.scrollHeight;
+}
+
+// 发送聊天消息
+async function sendChatMessage(groupId) {
+    const input = document.getElementById('chatInput');
+    if (!input) return;
+    
+    const content = input.value.trim();
+    if (!content) return;
+    
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/api/groups/${groupId}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser.username,
+                content: content
+            })
+        });
+        
+        input.value = '';
+        
+        if (res.ok) {
+            // 重新加载聊天记录
+            loadChatHistory(groupId);
+        }
+    } catch (e) {
+        alert('发送失败，请重试');
+    }
+}
+
+// 定时刷新聊天（每3秒）
+let chatRefreshInterval = null;
+function startChatRefresh(groupId) {
+    if (chatRefreshInterval) clearInterval(chatRefreshInterval);
+    chatRefreshInterval = setInterval(() => {
+        if (currentTab === 'chat') {
+            loadChatHistory(groupId);
+        }
+    }, 3000);
+}
+
+// 停止定时刷新
+function stopChatRefresh() {
+    if (chatRefreshInterval) {
+        clearInterval(chatRefreshInterval);
+        chatRefreshInterval = null;
+    }
+}
+
+// ========== 群组操作 ==========
+async function joinGroup(groupId) {
+    if (!currentUser) { alert('请先登录'); return; }
+    
+    try {
+        const res = await fetch(`/api/groups/${groupId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser.username })
+        });
+        const data = await res.json();
+        alert(data.msg);
+        if (data.status === 'success') loadGroupDetail(groupId);
+    } catch (e) { alert('加入失败'); }
+}
+
+async function leaveGroup(groupId) {
+    if (!confirm('确定要退出群组吗？')) return;
+    
+    try {
+        const res = await fetch(`/api/groups/${groupId}/leave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser.username })
+        });
+        const data = await res.json();
+        alert(data.msg);
+        if (data.status === 'success') loadGroupDetail(groupId);
+    } catch (e) { alert('退出失败'); }
+}
+
+function goToTopic(postId) {
+    let url = `/topic?id=${postId}`;
+    if (currentUser) {
+        url += `&user=${encodeURIComponent(JSON.stringify(currentUser))}`;
+    }
+    window.location.href = url;
+}
+
+function redirectToLogin() {
+    window.location.href = '/';
+}
+</script>
+
+</body>
+</html>

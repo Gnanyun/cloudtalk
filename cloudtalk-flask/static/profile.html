@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - CloudTalk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        dark: '#1D2129',
+                        light: '#F2F3F5',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .user-menu-wrapper { position: relative; }
+        .user-menu-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            width: 12rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            padding: 0.5rem 0;
+            z-index: 200;
+        }
+        .user-menu-dropdown.show {
+            display: block;
+        }
+        .tab-btn.active {
+            color: #165DFF !important;
+            border-bottom: 2px solid #165DFF !important;
+        }
+        @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+.animate-bounce {
+    animation: bounce 0.3s infinite;
+}
+.animate-pulse {
+    animation: pulse 0.5s infinite;
+}
+/* 抽卡动画 */
+@keyframes cardFlip {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(180deg); }
+}
+@keyframes cardGlow {
+    0%, 100% { box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+    50% { box-shadow: 0 0 30px rgba(255,215,0,0.8); }
+}
+@keyframes sparkle {
+    0%, 100% { opacity: 0; transform: scale(0); }
+    50% { opacity: 1; transform: scale(1); }
+}
+@keyframes floatUp {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+.card-flip {
+    animation: cardFlip 0.8s ease-in-out forwards;
+    transform-style: preserve-3d;
+}
+.card-common {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border: 3px solid #81c784;
+}
+.card-rare {
+    background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+    border: 3px solid #7986cb;
+    animation: cardGlow 2s infinite;
+}
+.card-legendary {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 50%, #ffe082 100%);
+    border: 4px solid #ffd700;
+    animation: cardGlow 1s infinite;
+}
+.card-legendary .card-bg {
+    background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, transparent 70%);
+}
+.sparkle {
+    position: absolute;
+    animation: sparkle 1.5s ease-in-out infinite;
+}
+.sparkle:nth-child(1) { top: 10%; left: 20%; animation-delay: 0s; }
+.sparkle:nth-child(2) { top: 30%; right: 15%; animation-delay: 0.3s; }
+.sparkle:nth-child(3) { bottom: 20%; left: 25%; animation-delay: 0.6s; }
+.sparkle:nth-child(4) { top: 15%; right: 30%; animation-delay: 0.9s; }
+.sparkle:nth-child(5) { bottom: 30%; right: 20%; animation-delay: 1.2s; }
+.perspective-1000 {
+    perspective: 1000px;
+}
+.card-flipped {
+    transform: rotateY(180deg);
+}
+.draw-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+.draw-card-inner.flipped {
+    transform: rotateY(180deg);
+}
+.draw-card-front, .draw-card-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.draw-card-back {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.draw-card-front {
+    transform: rotateY(180deg);
+}
+.draw-card-front.common {
+    background: linear-gradient(135deg, #e8f5e9 0%, #a5d6a7 100%);
+    border: 3px solid #66bb6a;
+}
+.draw-card-front.rare {
+    background: linear-gradient(135deg, #e8eaf6 0%, #9fa8da 100%);
+    border: 3px solid #5c6bc0;
+    box-shadow: 0 0 20px rgba(121, 134, 203, 0.5);
+}
+.draw-card-front.legendary {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffd54f 100%);
+    border: 4px solid #ffc107;
+    box-shadow: 0 0 30px rgba(255, 193, 7, 0.7);
+    animation: legendaryGlow 1s ease-in-out infinite alternate;
+}
+@keyframes legendaryGlow {
+    0% { box-shadow: 0 0 20px rgba(255, 193, 7, 0.5); }
+    100% { box-shadow: 0 0 40px rgba(255, 193, 7, 0.9), 0 0 60px rgba(255, 152, 0, 0.4); }
+}
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal.active {
+    display: flex;
+}
+    </style>
+</head>
+<body class="bg-light font-inter text-dark">
+
+<!-- 顶部导航栏 -->
+<header class="sticky top-0 z-40 bg-white shadow-sm">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between h-16">
+            <a href="/" class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white">
+                    <i class="fa fa-comments-o text-xl"></i>
+                </div>
+                <span class="text-xl font-bold">CloudTalk</span>
+            </a>
+            
+            <nav class="hidden md:flex space-x-6">
+                <a href="/" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">首页</a>
+                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">技术区</a>
+                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">创意区</a>
+                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">生活区</a>
+            </nav>
+            
+            <div class="flex items-center space-x-3">
+<div id="userMenu" class="relative user-menu-wrapper">
+    <button onclick="toggleUserMenu(event)" class="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:shadow-md transition-shadow">
+        <img id="topAvatar" src="/api/default-avatar?name=用户" alt="头像" class="w-full h-full object-cover">
+    </button>
+    <div id="userDropdown" class="user-menu-dropdown absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+        <a href="javascript:void(0)" onclick="goToPage('/profile')" class="block px-4 py-2 hover:bg-light">
+            <i class="fa fa-user mr-2"></i>个人中心
+        </a>
+        <a href="javascript:void(0)" onclick="goToPage('/notifications')" class="block px-4 py-2 hover:bg-light">
+            <i class="fa fa-bell mr-2"></i>消息通知
+        </a>
+        <a href="javascript:void(0)" onclick="goToPage('/settings')" class="block px-4 py-2 hover:bg-light">
+            <i class="fa fa-cog mr-2"></i>设置
+        </a>
+        <div class="border-t my-1"></div>
+        <a href="javascript:void(0)" onclick="logout()" class="block px-4 py-2 text-red-500 hover:bg-light">
+            <i class="fa fa-sign-out mr-2"></i>退出登录
+        </a>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- 主内容区 -->
+<main class="container mx-auto px-4 py-6">
+    <div class="max-w-4xl mx-auto">
+        <!-- 用户信息卡片 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div class="flex items-center space-x-6">
+                <div class="relative">
+                    <img id="profileAvatar" src="/api/default-avatar?name=用户" alt="头像" 
+                         class="w-24 h-24 rounded-full object-cover border-4 border-white shadow">
+                    <button onclick="document.getElementById('avatarInput').click()" 
+                            class="absolute bottom-0 right-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center hover:bg-primary/90">
+                        <i class="fa fa-camera"></i>
+                    </button>
+                    <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="uploadAvatar()">
+                </div>
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold" id="profileName">用户名</h1>
+                    <p class="text-gray-500 mt-1" id="profileBio">这个人很懒，什么都没写~</p>
+                    <div class="flex space-x-6 mt-3">
+                        <div>
+                            <span class="font-bold text-xl" id="profilePosts">0</span>
+                            <span class="text-gray-500 text-sm ml-1">发帖</span>
+                        </div>
+                        <div>
+                            <span class="font-bold text-xl" id="profileFollowers">0</span>
+                            <span class="text-gray-500 text-sm ml-1">粉丝</span>
+                        </div>
+                        <div>
+                            <span class="font-bold text-xl" id="profileFollowing">0</span>
+                            <span class="text-gray-500 text-sm ml-1">关注</span>
+                        </div>
+                        <div>
+                            <span class="font-bold text-xl" id="profileLikes">0</span>
+                            <span class="text-gray-500 text-sm ml-1">获赞</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="openModal('editProfile')" class="text-sm text-primary hover:underline">
+    <i class="fa fa-edit mr-1"></i>编辑资料
+</button>
+            </div>
+        </div>
+     
+        <!-- 编辑资料弹窗 -->
+<div id="editProfileModal" class="modal">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 relative">
+        <button onclick="closeModal('editProfile')" class="absolute top-4 right-4 text-gray-400">
+            <i class="fa fa-times"></i>
+        </button>
+        <h2 class="text-xl font-bold mb-4">编辑资料</h2>
+        
+        <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">头像</label>
+            <button onclick="openAvatarModal()" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                <i class="fa fa-camera mr-1"></i>更换头像
+            </button>
+        </div>
+        
+        <div class="mb-3">
+            <label class="block text-sm font-medium mb-1">个人简介</label>
+            <textarea id="editBio" rows="3" placeholder="介绍一下自己..." 
+                      class="w-full px-4 py-2 border rounded-lg"></textarea>
+        </div>
+        
+        <button onclick="saveProfile()" class="w-full bg-primary text-white py-2 rounded-lg">
+            保存
+        </button>
+    </div>
+</div>
+
+        <!-- 花朵展示区 -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-lg"><i class="fa fa-leaf mr-2 text-primary"></i>我的花园</h3>
+        <div class="flex items-center space-x-3">
+            <span class="text-sm text-gray-500" id="checkinStatus">连续签到 0 天</span>
+            <button id="checkinBtn" onclick="doCheckin()" class="px-4 py-1 bg-green-500 text-white text-sm rounded-full hover:bg-green-600">
+                签到
+            </button>
+            <button id="drawBtn" onclick="doDraw()" class="px-4 py-1 bg-pink-500 text-white text-sm rounded-full hover:bg-pink-600 hidden">
+                抽花 🌸
+            </button>
+        </div>
+    </div>
+    
+    <div id="flowerGarden" class="flex flex-wrap gap-4 text-center">
+        <div class="text-gray-400 py-4">
+            <i class="fa fa-spinner fa-spin"></i> 加载中...
+        </div>
+    </div>
+</div>
+
+<!-- 抽卡动画层 -->
+<div id="drawAnimation" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+    <div class="text-center" style="perspective: 1000px;">
+        <div id="cardContainer" class="w-64 h-80 mx-auto">
+            <div id="cardInner" class="draw-card-inner">
+                <!-- 卡背 -->
+                <div class="draw-card-back">
+                    <div class="text-center text-white">
+                        <div class="text-5xl mb-3">🎴</div>
+                        <p class="text-xl font-bold">抽花中...</p>
+                    </div>
+                </div>
+                <!-- 卡面 -->
+                <div id="cardFront" class="draw-card-front">
+                    <div id="resultEmoji" class="text-7xl"></div>
+                    <div id="resultName" class="text-xl font-bold mt-3"></div>
+                </div>
+            </div>
+        </div>
+        <p id="animationHint" class="text-white mt-6 text-sm">点击关闭</p>
+    </div>
+</div>
+
+        <!-- 标签页 -->
+        <div class="bg-white rounded-xl shadow-sm">
+            <div class="border-b border-gray-200 px-6">
+                <div class="flex space-x-6">
+                    <button class="tab-btn active py-4 px-2 font-medium" data-tab="posts">我的帖子</button>
+                    <button class="tab-btn py-4 px-2 text-gray-500 font-medium" data-tab="comments">我的评论</button>
+                    <button class="tab-btn py-4 px-2 text-gray-500 font-medium" data-tab="likes">我的点赞</button>
+                    <button class="tab-btn py-4 px-2 text-gray-500 font-medium" data-tab="follows">我的关注</button>
+                </div>
+            </div>
+            
+            <!-- 内容区域 -->
+            <div id="tabContent" class="p-6">
+                <div class="text-center py-10 text-gray-400">
+                    <i class="fa fa-spinner fa-spin"></i> 加载中...
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+let currentUser = null;
+
+// 检查登录状态
+function checkAuth() {
+    const savedUser = localStorage.getItem('currentUser');
+    if (!savedUser) {
+        window.location.href = '/';
+        return false;
+    }
+    try {
+        currentUser = JSON.parse(savedUser);
+        return true;
+    } catch (e) {
+        window.location.href = '/';
+        return false;
+    }
+}
+
+// 加载用户信息
+async function loadProfile() {
+    if (!checkAuth()) return;
+    
+    document.getElementById('topAvatar').src = currentUser.avatar || `/api/default-avatar?name=${currentUser.username}`;
+    document.getElementById('profileAvatar').src = currentUser.avatar || `/api/default-avatar?name=${currentUser.username}`;
+    document.getElementById('profileName').textContent = currentUser.username;
+    
+    try {
+        const res = await fetch(`/api/user/profile/${currentUser.username}`);
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            const profile = data.profile;
+            document.getElementById('profileBio').textContent = profile.bio || '这个人很懒，什么都没写~';
+            document.getElementById('profilePosts').textContent = profile.posts || 0;
+            document.getElementById('profileFollowers').textContent = profile.followers || 0;
+            document.getElementById('profileFollowing').textContent = profile.following || 0;
+            document.getElementById('profileLikes').textContent = profile.likes || 0;
+        }
+    } catch (e) {
+        console.error('加载个人信息失败:', e);
+    }
+}
+
+// 标签页切换
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        const tab = btn.getAttribute('data-tab');
+        
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active', 'text-primary');
+            b.classList.add('text-gray-500');
+        });
+        btn.classList.add('active', 'text-primary');
+        
+        await loadTabContent(tab);
+    });
+});
+
+async function loadTabContent(tab) {
+    const container = document.getElementById('tabContent');
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>';
+    
+    try {
+        let url;
+        if (tab === 'posts') {
+            // 使用新的专用路由
+            url = `/api/user/${currentUser.username}/posts?current_user=${currentUser.username}`;
+        } else {
+            url = `/api/user/${currentUser.username}/${tab}?viewer=${currentUser.username}`;
+        }
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.length === 0) {
+            container.innerHTML = `<div class="text-center py-10 text-gray-400">暂无${getTabName(tab)}</div>`;
+            return;
+        }
+        
+        renderTabContent(tab, data, container);
+    } catch (e) {
+        container.innerHTML = '<div class="text-center py-10 text-red-500">加载失败</div>';
+    }
+}
+
+function getTabName(tab) {
+    const names = { posts: '帖子', comments: '评论', likes: '点赞', follows: '关注' };
+    return names[tab] || '';
+}
+
+function renderTabContent(tab, data, container) {
+    if (tab === 'posts') {
+        container.innerHTML = data.map(post => `
+            <div class="border-b border-gray-100 last:border-0 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 cursor-pointer" onclick="goToTopic(${post.id})">
+                        <h3 class="font-medium text-lg">${post.title}</h3>
+                        <p class="text-gray-500 text-sm mt-1 line-clamp-2">${post.content}</p>
+                        <div class="flex items-center space-x-4 mt-2 text-xs text-gray-400">
+                            <span><i class="fa fa-eye mr-1"></i>${post.views || 0}</span>
+                            <span><i class="fa fa-comment-o mr-1"></i>${post.comments || 0}</span>
+                            <span><i class="fa fa-heart-o mr-1"></i>${post.likes || 0}</span>
+                            <span>${new Date(post.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 ml-4" onclick="event.stopPropagation()">
+                        ${post.hidden ? '<span class="text-xs text-red-400">[已隐藏]</span>' : ''}
+                        <button onclick="toggleHidePost(${post.id})" class="text-yellow-500 hover:underline text-sm">${post.hidden ? '公开' : '隐藏'}</button>
+                        <button onclick="deleteMyPost(${post.id}, event)" class="text-red-400 hover:text-red-600"><i class="fa fa-trash-o"></i> 删除</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } else if (tab === 'comments') {
+        container.innerHTML = data.map(comment => `
+            <div class="border-b border-gray-100 last:border-0 py-4">
+                <a href="/topic?id=${comment.post_id}" class="block">
+                    <p class="text-gray-800">${comment.content}</p>
+                    <p class="text-gray-400 text-xs mt-2">${new Date(comment.created_at).toLocaleString()}</p>
+                </a>
+            </div>
+        `).join('');
+    } else if (tab === 'likes') {
+        container.innerHTML = data.map(post => `
+            <div class="border-b border-gray-100 last:border-0 py-4">
+                <a href="/topic?id=${post.id}" class="block hover:bg-light p-2 -m-2 rounded-lg transition-colors">
+                    <h3 class="font-medium">${post.title}</h3>
+                    <p class="text-gray-500 text-sm mt-1">作者：${post.author}</p>
+                </a>
+            </div>
+        `).join('');
+    } else if (tab === 'follows') {
+        container.innerHTML = data.map(user => `
+            <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                <div class="flex items-center space-x-3">
+                    <img src="${user.avatar || `/api/default-avatar?name=${user.username}`}" 
+                         class="w-10 h-10 rounded-full object-cover">
+                    <span class="font-medium">${user.username}</span>
+                </div>
+                <button class="text-sm text-primary hover:underline" onclick="unfollowUser('${user.username}')">取消关注</button>
+            </div>
+        `).join('');
+    }
+}
+
+function goToTopic(postId) {
+    window.location.href = `/topic?id=${postId}`;
+}
+
+async function uploadAvatar() {
+    const fileInput = document.getElementById('avatarInput');
+    const file = fileInput.files[0];
+    if (!file) {
+        alert('请选择一张图片');
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        alert('图片大小不能超过 5MB');
+        return;
+    }
+    const formData = new FormData();
+    formData.append('avatar', file);
+    formData.append('username', currentUser.username);
+    try {
+        const res = await fetch('/api/upload-avatar', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        alert(data.msg);
+        if (data.status === 'success') {
+            currentUser.avatar = data.avatar_url;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            document.getElementById('topAvatar').src = data.avatar_url;
+            document.getElementById('profileAvatar').src = data.avatar_url;
+        }
+    } catch (e) {
+        alert('上传失败，请重试');
+    }
+}
+
+function logout() {
+    localStorage.removeItem('currentUser');
+    window.location.href = '/';
+}
+
+// 页面加载
+window.onload = () => {
+    loadProfile();  // 先加载用户（包含 currentUser 初始化）
+    loadCheckinStatus();
+    loadFlowers();
+    loadTabContent('posts');
+};
+function toggleUserMenu(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('show');
+    }
+}
+
+function goToPage(url) {
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) {
+        dropdown.classList.remove('show');
+    }
+    window.location.href = url;
+}
+
+document.addEventListener('click', function(e) {
+    const userMenu = document.getElementById('userMenu');
+    const dropdown = document.getElementById('userDropdown');
+    if (userMenu && dropdown && !userMenu.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
+async function deleteMyPost(postId, event) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    if (!confirm('确定要删除这篇帖子吗？此操作不可撤销。')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/api/posts/${postId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser.username })
+        });
+        const data = await res.json();
+        alert(data.msg);
+        
+        if (data.status === 'success') {
+            // 重新加载我的帖子
+            const postsBtn = document.querySelector('.tab-btn[data-tab="posts"]');
+            if (postsBtn) postsBtn.click();
+        }
+    } catch (e) {
+        alert('删除失败，请重试');
+    }
+}
+// 隐藏/公开帖子
+async function toggleHidePost(postId) {
+    if (!currentUser) return;
+    
+    const res = await fetch(`/api/posts/${postId}/hide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentUser.username })
+    });
+    const data = await res.json();
+    alert(data.msg);
+    
+    // 重新加载帖子列表
+    const postsBtn = document.querySelector('.tab-btn[data-tab="posts"]');
+    if (postsBtn) postsBtn.click();
+}
+// 加载签到状态
+async function loadCheckinStatus() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch(`/api/checkin/status/${currentUser.username}`);
+        const data = await res.json();
+        
+        document.getElementById('checkinStatus').textContent = `连续签到 ${data.consecutive} 天`;
+        
+        // 签到按钮状态
+        if (data.checked_today) {
+            document.getElementById('checkinBtn').disabled = true;
+            document.getElementById('checkinBtn').textContent = '已签到';
+            document.getElementById('checkinBtn').classList.remove('bg-green-500', 'hover:bg-green-600');
+            document.getElementById('checkinBtn').classList.add('bg-gray-300', 'cursor-not-allowed');
+        }
+        
+        // 抽花按钮状态
+        const drawBtn = document.getElementById('drawBtn');
+        drawBtn.classList.remove('hidden');  // 始终显示
+        
+        if (data.remaining > 0) {
+            drawBtn.disabled = false;
+            drawBtn.textContent = `抽花 🌸 (${data.remaining}次)`;
+            drawBtn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+            drawBtn.classList.add('bg-pink-500', 'hover:bg-pink-600');
+        } else {
+            drawBtn.disabled = true;
+            drawBtn.textContent = '抽花 🌸 (0次)';
+            drawBtn.classList.remove('bg-pink-500', 'hover:bg-pink-600');
+            drawBtn.classList.add('bg-gray-300', 'cursor-not-allowed');
+        }
+    } catch (e) {
+        console.error('加载签到状态失败:', e);
+    }
+}
+
+// 签到
+async function doCheckin() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch('/api/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser.username })
+        });
+        const data = await res.json();
+        alert(data.msg);
+        
+        if (data.status === 'success') {
+            loadCheckinStatus();
+            if (data.can_draw) {
+                document.getElementById('drawBtn').classList.remove('hidden');
+            }
+        }
+    } catch (e) {
+        alert('签到失败');
+    }
+}
+
+// 抽花
+async function doDraw() {
+    if (!currentUser) return;
+    
+    const animDiv = document.getElementById('drawAnimation');
+    const cardInner = document.getElementById('cardInner');
+    const cardFront = document.getElementById('cardFront');
+    const resultEmoji = document.getElementById('resultEmoji');
+    const resultName = document.getElementById('resultName');
+    const animationHint = document.getElementById('animationHint');
+    const drawBtn = document.getElementById('drawBtn');
+    
+    // 重置
+    cardInner.classList.remove('flipped');
+    cardFront.className = 'draw-card-front';
+    resultEmoji.textContent = '';
+    resultName.textContent = '';
+    animationHint.textContent = '抽取中...';
+    
+    animDiv.classList.remove('hidden');
+    
+    try {
+        const res = await fetch('/api/draw-flower', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser.username })
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            const f = data.flower;
+            
+            resultEmoji.textContent = f.emoji;
+            resultName.textContent = f.name;
+            
+            if (f.rarity === '传说') {
+                cardFront.classList.add('legendary');
+            } else if (f.rarity === '稀有') {
+                cardFront.classList.add('rare');
+            } else {
+                cardFront.classList.add('common');
+            }
+            
+            // 翻转
+            await new Promise(r => setTimeout(r, 200));
+            cardInner.classList.add('flipped');
+            
+            await new Promise(r => setTimeout(r, 900));
+            
+            // 更新剩余次数
+if (data.remaining <= 0) {
+    drawBtn.disabled = true;
+    drawBtn.textContent = '抽花 🌸 (0次)';
+    drawBtn.classList.remove('bg-pink-500', 'hover:bg-pink-600');
+    drawBtn.classList.add('bg-gray-300', 'cursor-not-allowed');
+} else {
+    drawBtn.textContent = `抽花 🌸 (${data.remaining}次)`;
+}
+            
+            animationHint.textContent = `今日剩余 ${data.remaining} 次 | 点击关闭`;
+            
+            const closeHandler = () => {
+                animDiv.removeEventListener('click', closeHandler);
+                animDiv.classList.add('hidden');
+                cardInner.classList.remove('flipped');
+                loadFlowers();
+                loadCheckinStatus();
+            };
+            animDiv.addEventListener('click', closeHandler);
+            
+        } else {
+            animDiv.classList.add('hidden');
+            alert(data.msg);
+        }
+    } catch (e) {
+        animDiv.classList.add('hidden');
+        alert('抽花失败');
+    }
+}
+
+// 加载花朵
+async function loadFlowers() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch(`/api/user/flowers/${currentUser.username}`);
+        const flowers = await res.json();
+        const container = document.getElementById('flowerGarden');
+        
+        if (flowers.length === 0) {
+            container.innerHTML = '<div class="text-gray-400 py-2">还没有花朵，连续签到3天可以抽花哦~</div>';
+            return;
+        }
+        
+container.innerHTML = flowers.map(f => `
+    <div class="flex flex-col items-center">
+        <span class="text-3xl">${f.flower_emoji}</span>
+        <span class="text-xs text-gray-500 mt-1">${f.flower_name}</span>
+    </div>
+`).join('');
+    } catch (e) {
+        console.error('加载花朵失败:', e);
+    }
+}
+// 保存资料
+async function saveProfile() {
+    if (!currentUser) return;
+    const bio = document.getElementById('editBio').value.trim();
+    
+    const res = await fetch(`/api/user/profile/${currentUser.username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio: bio })
+    });
+    const data = await res.json();
+    alert(data.msg);
+    if (data.status === 'success') {
+        closeModal('editProfile');
+        loadProfile(); // 重新加载资料
+    }
+}
+function openModal(type) {
+    document.getElementById(type + 'Modal').classList.add('active');
+}
+function closeModal(type) {
+    document.getElementById(type + 'Modal').classList.remove('active');
+}
+</script>
+</body>
+</html>
