@@ -2,11 +2,37 @@ import os
 import uuid
 import sqlite3
 import hashlib
-from flask import Flask, request, jsonify, send_from_directory, Response
+import secrets
+from flask import Flask, request, jsonify, send_from_directory, Response, session
 from werkzeug.security import generate_password_hash, check_password_hash
+from PIL import Image  # 需要 pip install Pillow
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 
+# ==================== 安全配置（补丁一新增，全部为增量）====================
+
+# SECRET_KEY（用于会话签名，防止会话伪造）
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# 会话 Cookie 安全属性
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('FLASK_ENV') == 'production':
+    app.config['SESSION_COOKIE_SECURE'] = True
+
+# 文件上传 MIME 白名单（补充扩展名校验）
+ALLOWED_MIMES = {'image/png', 'image/jpeg', 'image/gif'}
+
+def verify_image(filepath):
+    """用 Pillow 验证文件确实是合法图片"""
+    try:
+        with Image.open(filepath) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
+
+# ==================== 安全配置结束 ====================
 # ---------- 配置文件上传 ----------
 UPLOAD_FOLDER = os.path.join('static', 'uploads', 'avatars')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
