@@ -2,10 +2,10 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "cd 云语瓶 && pip install -r requirements.txt"
+    "buildCommand": "python -m pip install -r requirements.txt"
   },
   "deploy": {
-    "startCommand": "cd 云语瓶 && gunicorn app:app --bind 0.0.0.0:$PORT",
+    "startCommand": "python -m gunicorn app:app --bind 0.0.0.0:$PORT",
     "healthcheckPath": "/",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
