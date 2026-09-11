@@ -1344,6 +1344,7 @@ def admin_posts():
 
 # ---------- 删除帖子（管理端） ----------
 @app.route('/api/admin/posts/<int:post_id>', methods=['DELETE'])
+@admin_required
 def admin_delete_post(post_id):
     conn = get_db()
     conn.execute('DELETE FROM comments WHERE post_id = ?', (post_id,))
