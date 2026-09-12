@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudTalk - 云享智慧社区</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script>
+        // ---------- XSS 防御：HTML 转义 ----------
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        dark: '#1D2129',
+                        light: '#F2F3F5',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+    .modal.active { display: flex; }
+    .card-hover { transition: all 0.3s; }
+    .card-hover:hover { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .nav-active { color: #165DFF; border-bottom: 2px solid #165DFF; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .user-menu-wrapper {
+        position: relative;
+    }
+    .user-menu-dropdown {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: 0.5rem;
+        width: 12rem;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        padding: 0.5rem 0;
+        z-index: 200;
+}
+    .user-menu-dropdown.show {
+    display: block;
+}
+        .tab-btn.active {
+        color: #165DFF;
+        border-bottom: 2px solid #165DFF;
+    }
+    .topic-item {
+        transition: all 0.2s;
+    }
+    .topic-item:hover {
+        background-color: #F2F3F5;
+        padding-left: 0.5rem;
+        border-radius: 0.375rem;
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%);
+    }
+        .nav-link.active {
+        color: #165DFF !important;
+        border-bottom: 2px solid #165DFF !important;
+    }
+    .nav-link {
+        transition: all 0.2s;
+    }
+    .chat-messages { max-height: 500px; overflow-y: auto; }
+.chat-message { margin-bottom: 12px; }
+.chat-message.mine { text-align: right; }
+.chat-message.mine .chat-bubble { background: #165DFF; color: white; display: inline-block; }
+.chat-message.other .chat-bubble { background: #F2F3F5; color: #1D2129; display: inline-block; }
+.chat-bubble { padding: 10px 18px; border-radius: 18px; max-width: 75%; word-wrap: break-word; }
+</style>
+</head>
+<body class="bg-light font-inter text-dark">
+
+<!-- 登录模态框 -->
+<div id="loginModal" class="modal">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 relative">
+        <button onclick="closeModal('login')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa fa-times"></i></button>
+        <h2 class="text-xl font-bold mb-4">登录 CloudTalk</h2>
+        <div class="space-y-3">
+            <input type="text" id="loginUsername" placeholder="用户名" class="w-full px-4 py-2 border rounded-lg">
+            <input type="password" id="loginPassword" placeholder="密码" class="w-full px-4 py-2 border rounded-lg">
+            <button id="loginBtn" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">登录</button>
+            <p class="text-center text-sm text-gray-500">没有账号？ <span class="text-primary cursor-pointer" onclick="switchModal('register')">立即注册</span></p >
+        </div>
+    </div>
+</div>
+
+<!-- 移动端搜索模态框 -->
+<div id="mobileSearchModal" class="modal">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 relative">
+        <button onclick="closeModal('mobileSearch')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+            <i class="fa fa-times"></i>
+        </button>
+        <h2 class="text-xl font-bold mb-4">搜索帖子</h2>
+        <div class="relative">
+            <input type="text" id="mobileSearchInput" placeholder="输入关键词..." 
+                   class="w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        </div>
+        <button id="mobileSearchSubmitBtn" class="w-full mt-4 bg-primary text-white py-2 rounded-lg hover:bg-primary/90">
+            搜索
+        </button>
+    </div>
+</div>
+
+<!-- 注册模态框 -->
+<div id="registerModal" class="modal">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 relative">
+        <button onclick="closeModal('register')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa fa-times"></i></button>
+        <h2 class="text-xl font-bold mb-4">注册账号</h2>
+        <div class="space-y-3">
+            <input type="text" id="regUsername" placeholder="用户名" class="w-full px-4 py-2 border rounded-lg">
+            <input type="password" id="regPassword" placeholder="密码" class="w-full px-4 py-2 border rounded-lg">
+            <button id="registerBtn" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">注册</button>
+            <p class="text-center text-sm text-gray-500">已有账号？ <span class="text-primary cursor-pointer" onclick="switchModal('login')">去登录</span></p >
+        </div>
+    </div>
+</div>
+
+<!-- 发帖模态框 -->
+<div id="postModal" class="modal">
+    <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 relative">
+        <button onclick="closeModal('post')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa fa-times"></i></button>
+        <h2 class="text-xl font-bold mb-4">发布新话题</h2>
+        
+        <!-- 分类选择 -->
+        <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-2">选择分类</label>
+            <div class="flex flex-wrap gap-2" id="categoryTags">
+                <!-- 动态渲染分类标签 -->
+            </div>
+            <!-- 添加自定义分类 -->
+            <div class="flex mt-2">
+                <input type="text" id="newCategoryInput" placeholder="添加自定义分类..." 
+                       class="flex-1 px-3 py-1 text-sm border rounded-l-lg focus:outline-none focus:ring-1 focus:ring-primary/20">
+                <button onclick="addCustomCategory()" class="px-3 py-1 bg-primary text-white text-sm rounded-r-lg hover:bg-primary/90">
+                    <i class="fa fa-plus"></i>
+                </button>
+            </div>
+        </div>
+        
+        <input type="text" id="postTitle" placeholder="标题" class="w-full px-4 py-2 border rounded-lg mb-3">
+        <textarea id="postContent" rows="5" placeholder="分享你的想法..." class="w-full px-4 py-2 border rounded-lg mb-3"></textarea>
+        <button id="publishPostBtn" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">发布</button>
+    </div>
+</div>
+
+<!-- 头像上传模态框 -->
+<div id="avatarModal" class="modal">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 relative">
+        <button onclick="closeModal('avatar')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa fa-times"></i></button>
+        <h2 class="text-xl font-bold mb-4">更换头像</h2>
+        <div class="flex flex-col items-center">
+            <img id="avatarPreview" src="" alt="头像预览" class="w-32 h-32 rounded-full object-cover border-4 border-white shadow mb-4">
+            <input type="file" id="avatarFile" accept="image/png, image/jpeg, image/gif" class="mb-4">
+            <button id="uploadAvatarBtn" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">上传</button>
+        </div>
+    </div>
+</div>
+
+<!-- 顶部导航栏 -->
+<header class="sticky top-0 z-40 bg-white shadow-sm">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between h-16">
+            <!-- Logo -->
+            <a href=" " class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white">
+                    <i class="fa fa-comments-o text-xl"></i>
+                </div>
+                <span class="text-xl font-bold">CloudTalk</span>
+            </a >
+            
+            <!-- 导航菜单 -->
+            <nav class="hidden md:flex space-x-6">
+            <a href="#" id="navHome" class="nav-link nav-active px-1 py-2 font-medium" data-category="all">首页</a>
+            <a href="#" id="navGroups" class="nav-link px-1 py-2 font-medium text-gray-600 hover:text-primary" data-category="groups">群组</a>
+            <a href="#" id="navTech" class="nav-link px-1 py-2 font-medium text-gray-600 hover:text-primary" data-category="技术">技术区</a>
+            <a href="#" id="navCreative" class="nav-link px-1 py-2 font-medium text-gray-600 hover:text-primary" data-category="创意">创意区</a>
+            <a href="#" id="navLife" class="nav-link px-1 py-2 font-medium text-gray-600 hover:text-primary" data-category="生活">生活区</a>
+            <a href="#" id="navQA" class="nav-link px-1 py-2 font-medium text-gray-600 hover:text-primary" data-category="问答">问答区</a>
+            </nav>
+            
+    <div class="relative hidden md:flex items-center">
+        <input type="text" id="searchInput" placeholder="搜索帖子..." 
+               class="pl-10 pr-4 py-2 rounded-full bg-light focus:outline-none focus:ring-2 focus:ring-primary/20 w-48 transition-all">
+        <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <button id="searchBtn" class="ml-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+            <i class="fa fa-search"></i>
+        </button>
+    </div>
+<!-- 移动端搜索按钮 -->
+<button id="mobileSearchBtn" class="md:hidden text-gray-600 hover:text-primary">
+    <i class="fa fa-search text-xl"></i>
+</button>
+                
+                <!-- 未登录时显示 -->
+                <div id="authButtons">
+                    <button onclick="openModal('login')" class="text-gray-600 hover:text-primary px-3 py-2">登录</button>
+                    <button onclick="openModal('register')" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90">注册</button>
+                </div>
+                
+                <!-- 已登录时显示：发布按钮 -->
+                <button id="publishBtn" onclick="openModal('post')" class="hidden bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg items-center whitespace-nowrap">
+                    <i class="fa fa-pencil mr-2"></i><span>发布</span>
+                </button>
+                
+<!-- 已登录时显示：用户头像菜单 -->
+<div id="userMenu" class="hidden relative user-menu-wrapper">
+    <button onclick="toggleUserMenu(event)" class="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:shadow-md transition-shadow">
+        <img id="topAvatar" src="/api/default-avatar?name=云享用户" alt="头像" class="w-full h-full object-cover">
+    </button>
+    <!-- 下拉菜单（点击显示） -->
+    <div id="userDropdown" class="user-menu-dropdown absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+        <a href="javascript:void(0)" onclick="goToPage('/profile')" class="block px-4 py-2 hover:bg-light transition-colors">
+            <i class="fa fa-user mr-2"></i>个人中心
+        </a>
+        <a href="javascript:void(0)" onclick="goToPage('/notifications')" class="block px-4 py-2 hover:bg-light transition-colors">
+            <i class="fa fa-bell mr-2"></i>消息通知
+        </a>
+        <a href="javascript:void(0)" onclick="goToPage('/settings')" class="block px-4 py-2 hover:bg-light transition-colors">
+            <i class="fa fa-cog mr-2"></i>设置
+        </a>
+        <div class="border-t my-1"></div>
+        <a href="javascript:void(0)" onclick="logout()" class="block px-4 py-2 text-red-500 hover:bg-light transition-colors">
+            <i class="fa fa-sign-out mr-2"></i>退出登录
+        </a>
+    </div>
+</div>
+
+   
+                <!-- 移动端菜单按钮 -->
+                <button class="md:hidden text-gray-600"><i class="fa fa-bars text-xl"></i></button>
+            </div>
+        </div>
+    </div>
+</header>
+<!-- 主内容区域 -->
+<main class="container mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row gap-6">
+        <!-- 左侧边栏 -->
+        <aside class="md:w-1/5 space-y-6">
+            <div class="bg-white rounded-xl shadow-sm p-5">
+                <div class="flex flex-col items-center">
+                    <div class="w-16 h-16 rounded-full overflow-hidden border-4 border-white shadow-sm">
+                       <img id="sidebarAvatar" src="/api/default-avatar?name=云享用户" alt="头像" class="w-full h-full object-cover">
+                    </div>
+                    <h3 class="mt-3 font-bold text-lg" id="sidebarUsername">云享用户</h3>
+                    <p class="text-gray-500 text-sm">探索无限可能</p >
+                    <div class="w-full mt-4 grid grid-cols-3 gap-2 text-center">
+                        <div><p class="font-bold">128</p ><p class="text-xs text-gray-500">主题</p ></div>
+                        <div><p class="font-bold">5.2k</p ><p class="text-xs text-gray-500">获赞</p ></div>
+                        <div><p class="font-bold">368</p ><p class="text-xs text-gray-500">关注</p ></div>
+                    </div>
+                    <button onclick="if(currentUser) openModal('post'); else openModal('login')" class="w-full mt-4 bg-primary hover:bg-primary/90 text-white py-2 rounded-lg">
+                        <i class="fa fa-plus mr-1"></i> 发布新内容
+                    </button>
+                </div>
+            </div>
+
+                        <!-- 分类导航 -->
+<div class="bg-white rounded-xl shadow-sm p-5">
+    <h3 class="font-bold mb-3"><i class="fa fa-th-list mr-2 text-primary"></i>话题分类</h3>
+    <ul class="space-y-2">
+        <li>
+            <a href="#" onclick="filterByCategory('all'); return false;" class="category-link flex items-center py-2 px-3 rounded-lg hover:bg-light nav-active" data-category="all">
+                <i class="fa fa-fire mr-2"></i>热门推荐
+            </a>
+        </li>
+        <li>
+            <a href="#" onclick="filterByCategory('技术'); return false;" class="category-link flex items-center py-2 px-3 rounded-lg hover:bg-light text-gray-600" data-category="技术">
+                <i class="fa fa-code mr-2"></i>技术开发
+            </a>
+        </li>
+        <li>
+            <a href="#" onclick="filterByCategory('创意'); return false;" class="category-link flex items-center py-2 px-3 rounded-lg hover:bg-light text-gray-600" data-category="创意">
+                <i class="fa fa-paint-brush mr-2"></i>设计创意
+            </a>
+        </li>
+        <li>
+            <a href="#" onclick="filterByCategory('生活'); return false;" class="category-link flex items-center py-2 px-3 rounded-lg hover:bg-light text-gray-600" data-category="生活">
+                <i class="fa fa-coffee mr-2"></i>生活分享
+            </a>
+        </li>
+    </ul>
+</div>
+                        <!-- 推荐关注用户（新增） -->
+            <div class="bg-white rounded-xl shadow-sm p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-lg"><i class="fa fa-user-plus mr-2 text-primary"></i>推荐关注</h3>
+                    <a href="#" class="refresh-recommend text-xs text-primary hover:underline cursor-pointer">换一批 <i class="fa fa-refresh ml-1"></i></a>
+                </div>
+                <div class="space-y-4">
+                    <!-- 推荐用户1 -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                                <span>技</span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm text-gray-800">技术先锋</p>
+                                <p class="text-xs text-gray-400">前端开发 · 2.3k关注</p>
+                            </div>
+                        </div>
+                        <button class="follow-btn text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-colors">
+                            <i class="fa fa-plus mr-1"></i>关注
+                        </button>
+                    </div>
+                    
+                    <!-- 推荐用户2 -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
+                                <span>创</span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm text-gray-800">创意达人</p>
+                                <p class="text-xs text-gray-400">UI设计 · 5.6k关注</p>
+                            </div>
+                        </div>
+                        <button class="follow-btn text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-colors">
+                            <i class="fa fa-plus mr-1"></i>关注
+                        </button>
+                    </div>
+                    
+                    <!-- 推荐用户3 -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+                                <span>生</span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm text-gray-800">生活美学家</p>
+                                <p class="text-xs text-gray-400">生活方式 · 8.1k关注</p>
+                            </div>
+                        </div>
+                        <button class="follow-btn text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-colors">
+                            <i class="fa fa-plus mr-1"></i>关注
+                        </button>
+                    </div>
+                    
+                    <!-- 推荐用户4 -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+                                <span>程</span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm text-gray-800">程序员老王</p>
+                                <p class="text-xs text-gray-400">全栈开发 · 1.2k关注</p>
+                            </div>
+                        </div>
+                        <button class="follow-btn text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-colors">
+                            <i class="fa fa-plus mr-1"></i>关注
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-gray-100">
+                    <a href="#" class="text-primary text-sm flex items-center justify-center hover:underline">
+                        查看更多推荐 <i class="fa fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- 中间帖子列表区 -->
+        <section class="md:w-1/2 space-y-6">
+<div class="bg-white rounded-xl shadow-sm p-4">
+    <div class="flex overflow-x-auto scrollbar-hide">
+        <button id="tabLatest" class="tab-btn nav-active whitespace-nowrap px-4 py-2 font-medium transition-colors">最新发布</button>
+        <button id="tabHot" class="tab-btn whitespace-nowrap px-4 py-2 text-gray-600 font-medium transition-colors hover:text-primary">热门讨论</button>
+        <button id="tabFeatured" class="tab-btn whitespace-nowrap px-4 py-2 text-gray-600 font-medium transition-colors hover:text-primary">精华话题</button>
+    </div>
+</div>
+            <div id="postsContainer" class="space-y-5">
+                <!-- 动态渲染 -->
+            </div>
+        </section>
+
+        <!-- 右侧边栏 -->
+        <aside class="md:w-1/4 space-y-6">
+<div class="bg-white rounded-xl shadow-sm p-5">
+    <h3 class="font-bold mb-4 text-lg"><i class="fa fa-fire mr-2 text-primary"></i>热门话题</h3>
+    <div id="hotTopicsList" class="space-y-3">
+        <div class="text-center py-4 text-gray-400">
+            <i class="fa fa-spinner fa-spin"></i> 加载中...
+        </div>
+    </div>
+    <div class="mt-4 pt-3 border-t border-gray-100">
+        <a href="#" class="text-primary text-sm flex items-center justify-center hover:underline">
+            查看更多热门话题 <i class="fa fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+</div>
+            
+            <!-- 社区公告 -->
+<div class="bg-white rounded-xl shadow-sm p-5">
+    <h3 class="font-bold mb-4 text-lg"><i class="fa fa-bullhorn mr-2 text-primary"></i>社区公告</h3>
+    <div id="announcementsList" class="space-y-3">
+        <div class="text-center py-4 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>
+    </div>
+</div>
+            
+            <!-- 社区数据板块（新增） -->
+            <div class="bg-white rounded-xl shadow-sm p-5">
+                <h3 class="font-bold mb-4 text-lg"><i class="fa fa-bar-chart mr-2 text-primary"></i>社区数据</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="stat-card rounded-lg p-3 text-center">
+                        <div class="text-2xl font-bold text-primary">12.8k</div>
+                        <div class="text-xs text-gray-500 mt-1">注册会员</div>
+                    </div>
+                    <div class="stat-card rounded-lg p-3 text-center">
+                        <div class="text-2xl font-bold text-primary">3.6k</div>
+                        <div class="text-xs text-gray-500 mt-1">今日活跃</div>
+                    </div>
+                    <div class="stat-card rounded-lg p-3 text-center">
+                        <div class="text-2xl font-bold text-primary">28.5k</div>
+                        <div class="text-xs text-gray-500 mt-1">主题总数</div>
+                    </div>
+                    <div class="stat-card rounded-lg p-3 text-center">
+                        <div class="text-2xl font-bold text-primary">156k</div>
+                        <div class="text-xs text-gray-500 mt-1">评论总数</div>
+                    </div>
+                </div>
+                <!-- 在线用户 -->
+                <div class="mt-4 pt-3 border-t border-gray-100">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600"><i class="fa fa-circle text-green-500 text-xs mr-1"></i>当前在线</span>
+                        <span class="font-bold text-gray-800">1,286 人</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main> 
+<script>
+// ---------- 全局状态 ----------
+let currentUser = null;
+let currentTab = 'latest';
+let currentCategory = 'all';  // 新增：当前分类
+let currentSearchKeyword = ''; // 新增：当前搜索关键词
+
+// 工具函数：模态框
+function openModal(type) {
+    document.getElementById(type + 'Modal').classList.add('active');
+}
+function closeModal(type) {
+    document.getElementById(type + 'Modal').classList.remove('active');
+}
+function switchModal(to) {
+    closeModal('login');
+    closeModal('register');
+    openModal(to);
+}
+// 3. 替换 openAvatarModal 函数
+function openAvatarModal() {
+    if (!currentUser) {
+        alert('请先登录');
+        return openModal('login');
+    }
+    const preview = document.getElementById('avatarPreview');
+    if (preview) {
+        const avatarUrl = currentUser.avatar 
+            ? currentUser.avatar 
+            : `/api/default-avatar?name=${encodeURIComponent(currentUser.username)}`;
+        preview.src = avatarUrl;
+        preview.onerror = function() {
+            this.src = `/api/default-avatar?name=${encodeURIComponent(currentUser.username)}`;
+        };
+    }
+    openModal('avatar');
+}
+function updateAuthUI() {
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    const publishBtn = document.getElementById('publishBtn');
+    const sidebarUsername = document.getElementById('sidebarUsername');
+    
+    if (currentUser) {
+        authButtons.classList.add('hidden');
+        userMenu.classList.remove('hidden');
+        publishBtn.classList.remove('hidden');
+        publishBtn.style.display = 'flex';
+        sidebarUsername.textContent = currentUser.username;
+
+        // 获取头像 URL
+        let avatarUrl = currentUser.avatar || `/api/default-avatar?name=${encodeURIComponent(currentUser.username)}`;
+        
+        // 更新顶部头像
+        const topAvatar = document.getElementById('topAvatar');
+        if (topAvatar) {
+            topAvatar.src = avatarUrl;
+            topAvatar.onerror = function() {
+                this.src = `/api/default-avatar?name=${encodeURIComponent(currentUser.username)}`;
+            };
+        }
+        
+        // 更新侧边栏头像
+        const sidebarAvatar = document.getElementById('sidebarAvatar');
+        if (sidebarAvatar) {
+            sidebarAvatar.src = avatarUrl;
+            sidebarAvatar.onerror = function() {
+                this.src = `/api/default-avatar?name=${encodeURIComponent(currentUser.username)}`;
+            };
+        }
+        
+        // 加载用户统计数据
+        loadSidebarStats();
+        
+    } else {
+        authButtons.classList.remove('hidden');
+        userMenu.classList.add('hidden');
+        publishBtn.classList.add('hidden');
+        sidebarUsername.textContent = '云享用户';
+        
+        const defaultAvatar = '/api/default-avatar?name=云享用户';
+        const topAvatar = document.getElementById('topAvatar');
+        if (topAvatar) {
+            topAvatar.src = defaultAvatar;
+        }
+        
+        const sidebarAvatar = document.getElementById('sidebarAvatar');
+        if (sidebarAvatar) {
+            sidebarAvatar.src = defaultAvatar;
+        }
+        
+        // 重置为默认数据
+        document.querySelector('#sidebarUsername').nextElementSibling.textContent = '探索无限可能';
+        const statDivs = document.querySelectorAll('.grid-cols-3 .font-bold');
+        if (statDivs.length >= 3) {
+            statDivs[0].textContent = '128';
+            statDivs[1].textContent = '5.2k';
+            statDivs[2].textContent = '368';
+        }
+    }
+}
+
+// 加载侧边栏统计数据
+async function loadSidebarStats() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch(`/api/user/profile/${currentUser.username}`);
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            const profile = data.profile;
+            const statDivs = document.querySelectorAll('.grid-cols-3 .font-bold');
+            if (statDivs.length >= 3) {
+                statDivs[0].textContent = profile.posts || 0;
+                statDivs[1].textContent = formatNumber(profile.likes || 0);
+                statDivs[2].textContent = formatNumber(profile.followers || 0);
+            }
+        }
+    } catch (e) {
+        console.error('加载统计数据失败:', e);
+    }
+}
+// 登出
+async function logout() {
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+    } catch (e) {}
+    currentUser = null;
+    localStorage.removeItem('currentUser');
+    updateAuthUI();
+    resetRecommendFollowStatus();
+    alert('已退出登录');
+}
+
+// 跳转到话题详情页
+function goToTopic(postId) {
+    let url = `/topic?id=${postId}`;
+    
+    // 如果已登录，将用户信息通过 URL 传递
+    if (currentUser) {
+        const userInfo = encodeURIComponent(JSON.stringify(currentUser));
+        url += `&user=${userInfo}`;
+    }
+    
+    window.location.href = url;
+}
+
+// 格式化时间
+function formatTime(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return `${minutes}分钟前`;
+    if (hours < 24) return `${hours}小时前`;
+    if (days < 7) return `${days}天前`;
+    
+    return date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+}
+
+// 格式化数字
+function formatNumber(num) {
+    if (num >= 10000) {
+        return (num / 1000).toFixed(1) + 'k';
+    }
+    return num.toString();
+}
+
+// 切换标签页
+function switchTab(tab) {
+    currentTab = tab;
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('nav-active');
+        btn.classList.add('text-gray-600');
+    });
+    
+    const activeBtn = document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+    if (activeBtn) {
+        activeBtn.classList.add('nav-active');
+        activeBtn.classList.remove('text-gray-600');
+    }
+    
+    loadPostsByTab(tab);
+}
+
+// 根据标签页加载帖子
+async function loadPostsByTab(tab) {
+    const container = document.getElementById('postsContainer');
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>';
+    
+    let url = '/api/posts';
+    if (tab === 'hot') {
+        url = '/api/posts/hot';
+    } else if (tab === 'featured') {
+        url = '/api/posts/featured';
+    }
+    
+    try {
+        const res = await fetch(url);
+        const posts = await res.json();
+        
+        if (posts.length === 0) {
+            container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-gray-500">暂无帖子，快来发布第一条吧！</div>';
+            return;
+        }
+        
+        renderPosts(posts);
+    } catch (e) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败，请刷新重试</div>';
+    }
+}
+
+// 渲染帖子列表
+function renderPosts(posts) {
+    const container = document.getElementById('postsContainer');
+    
+    container.innerHTML = posts.map(post => {
+        const isOwner = currentUser && currentUser.username === post.author;
+        
+        return `
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden card-hover cursor-pointer" onclick="goToTopic(${post.id})">
+            <div class="p-5">
+                <div class="flex items-start">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                        <img src="${escapeHtml(post.author_avatar || '')}" 
+                             alt="头像" 
+                             class="w-full h-full object-cover"
+                             onerror="this.src='/api/default-avatar?name=${encodeURIComponent(post.author || '匿名')}'">
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <span class="font-medium text-sm text-gray-700">${escapeHtml(post.author || '匿名')}</span>
+                                <h4 class="font-medium text-base mt-1">${escapeHtml(post.title)}</h4>
+                            </div>
+                            <span class="text-xs text-gray-400 whitespace-nowrap ml-2">${new Date(post.created_at).toLocaleString()}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(post.content)}</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                    <div class="flex items-center space-x-4">
+                        <span class="inline-flex items-center text-xs text-gray-500">
+                            <i class="fa fa-tag mr-1"></i>${escapeHtml(post.tags || '话题')}
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="flex items-center text-gray-500 text-sm">
+                            <i class="fa fa-eye mr-1"></i>${formatNumber(post.views || 0)}
+                        </span>
+                        <span class="flex items-center text-gray-500 text-sm">
+                            <i class="fa fa-comment-o mr-1"></i>${formatNumber(post.comments || 0)}
+                        </span>
+                        <span class="flex items-center text-gray-500 text-sm">
+                            <i class="fa fa-heart-o mr-1"></i>${formatNumber(post.likes || 0)}
+                        </span>
+                        ${isOwner ? `
+                        <button class="flex items-center text-red-400 hover:text-red-600 text-sm" onclick="deletePost(${post.id}, event)">
+                            <i class="fa fa-trash-o mr-1"></i>删除
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `}).join('');
+}
+
+async function loadPosts() {
+    const container = document.getElementById('postsContainer');
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>';
+    try {
+        const res = await fetch('/api/posts');
+        const posts = await res.json();
+        if (posts.length === 0) {
+            container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-gray-500">暂无帖子，快来发布第一条吧！</div>';
+            return;
+        }
+        container.innerHTML = posts.map(post => `
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden card-hover cursor-pointer" onclick="goToTopic(${post.id})">
+                <div class="p-5">
+                    <div class="flex items-start">
+                        <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+                            <img src="${escapeHtml(post.author_avatar || '')}" 
+                                 alt="头像" 
+                                 class="w-full h-full object-cover"
+                                 onerror="this.src='/api/default-avatar?name=${encodeURIComponent(post.author || '匿名')}'">
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <div class="flex justify-between">
+                                <div>
+                                    <span class="font-medium text-sm text-gray-700">${escapeHtml(post.author || '匿名')}</span>
+                                    <h4 class="font-medium mt-1">${escapeHtml(post.title)}</h4>
+                                </div>
+                                <span class="text-xs text-gray-500 whitespace-nowrap ml-2">${new Date(post.created_at).toLocaleString()}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(post.content)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                        <div class="flex items-center space-x-4">
+                            <span class="inline-flex items-center text-xs text-gray-500">
+                                <i class="fa fa-tag mr-1"></i>${escapeHtml(post.tags || post.category || '话题')}
+                            </span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <span class="flex items-center text-gray-500"><i class="fa fa-eye mr-1"></i>${post.views || 0}</span>
+                            <span class="flex items-center text-gray-500"><i class="fa fa-comment-o mr-1"></i>${post.comments || 0}</span>
+                            <span class="flex items-center text-gray-500"><i class="fa fa-heart-o mr-1"></i>${post.likes || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败，请刷新重试</div>';
+    }
+}
+
+// 注册
+document.getElementById('registerBtn').addEventListener('click', async () => {
+    const username = document.getElementById('regUsername').value.trim();
+    const password = document.getElementById('regPassword').value;
+    if (!username || !password) return alert('请填写完整');
+    const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    alert(data.msg);
+    if (data.status === 'success') {
+        closeModal('register');
+        openModal('login');
+    }
+});
+
+// 登录
+document.getElementById('loginBtn').addEventListener('click', async () => {
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!username || !password) return alert('请填写完整');
+    const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    alert(data.msg);
+if (data.status === 'success') {
+    currentUser = data.user;
+    // 可选：保存到 localStorage（如果不想要持久化，注释掉这行）
+    localStorage.setItem('currentUser', JSON.stringify(data.user));
+    updateAuthUI();
+    closeModal('login');
+    loadPosts();
+    resetRecommendFollowStatus();
+}
+});
+
+// 发布帖子
+// 2. 替换头像上传回调
+document.getElementById('uploadAvatarBtn').addEventListener('click', async () => {
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    const fileInput = document.getElementById('avatarFile');
+    const file = fileInput.files[0];
+    if (!file) {
+        alert('请选择一张图片');
+        return;
+    }
+
+    // 检查文件大小（2MB）
+    if (file.size > 5 * 1024 * 1024) {
+        alert('图片大小不能超过 5MB');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+    formData.append('username', currentUser.username);
+
+    try {
+        const res = await fetch('/api/upload-avatar', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        alert(data.msg);
+        
+        if (data.status === 'success') {
+            // 更新当前用户头像
+            currentUser.avatar = data.avatar_url;
+            
+            // 强制刷新界面
+            updateAuthUI();
+            
+            // 关闭模态框
+            closeModal('avatar');
+            fileInput.value = '';
+            
+            // 刷新帖子列表以更新头像显示
+            loadPosts();
+        }
+    } catch (e) {
+        alert('上传失败，请重试');
+    }
+});
+// 页面加载
+window.onload = () => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+        try {
+            currentUser = JSON.parse(savedUser);
+            updateAuthUI();
+        } catch (e) {}
+    }
+    
+    loadPosts();
+    loadHotTopics();
+    loadAnnouncements();
+    initFollowButtons();
+
+        // 绑定标签页点击事件
+    document.getElementById('tabLatest')?.addEventListener('click', () => switchTab('latest'));
+    document.getElementById('tabHot')?.addEventListener('click', () => switchTab('hot'));
+    document.getElementById('tabFeatured')?.addEventListener('click', () => switchTab('featured'));
+    
+    // 绑定搜索事件
+    document.getElementById('searchBtn')?.addEventListener('click', () => {
+        const keyword = document.getElementById('searchInput').value;
+        performSearch(keyword);
+    });
+    
+    document.getElementById('searchInput')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const keyword = e.target.value;
+            performSearch(keyword);
+        }
+    });
+    
+    // 移动端搜索
+    document.getElementById('mobileSearchBtn')?.addEventListener('click', () => {
+        openModal('mobileSearch');
+    });
+
+    document.getElementById('mobileSearchSubmitBtn')?.addEventListener('click', () => {
+        const keyword = document.getElementById('mobileSearchInput').value;
+        performSearch(keyword);
+        closeModal('mobileSearch');
+    });
+};
+
+function closeModal(type) {
+    document.getElementById(type + 'Modal').classList.remove('active');
+    if (type === 'mobileSearch') {
+        document.getElementById('mobileSearchInput').value = '';
+    }
+}
+// ---------- 导航分类切换 ----------
+function switchCategory(category) {
+    // 恢复首页Tab栏
+    const container = document.getElementById('postsContainer');
+    const originalTabBar = container.previousElementSibling;
+    if (originalTabBar) originalTabBar.style.display = '';
+
+    currentCategory = category;
+    currentSearchKeyword = ''; // 清空搜索
+    document.getElementById('searchInput').value = '';
+    
+    // 更新导航样式
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('nav-active', 'text-primary');
+        link.classList.add('text-gray-600');
+    });
+    
+    // 高亮当前分类
+    const activeLink = document.querySelector(`.nav-link[data-category="${category}"]`);
+    if (activeLink) {
+        activeLink.classList.add('nav-active');
+        activeLink.classList.remove('text-gray-600');
+    }
+    
+    // 重置标签页为最新
+    currentTab = 'latest';
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('nav-active');
+        btn.classList.add('text-gray-600');
+    });
+    document.getElementById('tabLatest')?.classList.add('nav-active');
+    
+    // 加载分类帖子
+    loadPostsByCategory(category);
+}
+
+// 加载分类帖子
+async function loadPostsByCategory(category) {
+    const container = document.getElementById('postsContainer');
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>';
+    
+    try {
+        const res = await fetch(`/api/posts/category/${category}`);
+        const posts = await res.json();
+        
+        if (posts.length === 0) {
+            container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-gray-500">该分类暂无帖子</div>';
+            return;
+        }
+        
+        renderPosts(posts);
+    } catch (e) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败，请刷新重试</div>';
+    }
+}
+// ---------- 推荐关注用户交互 ----------
+// 关注按钮点击事件
+document.addEventListener('click', function(e) {
+    // 处理关注按钮
+    if (e.target.closest('.follow-btn')) {
+        e.preventDefault();
+        const btn = e.target.closest('.follow-btn');
+        
+        // 检查是否已登录
+        if (!currentUser) {
+            alert('请先登录后再关注用户');
+            openModal('login');
+            return;
+        }
+        
+        const userItem = btn.closest('.flex.items-center.justify-between');
+        const username = userItem.querySelector('.font-medium')?.textContent || '用户';
+        
+        if (btn.innerHTML.includes('fa-plus')) {
+            btn.innerHTML = '<i class="fa fa-check mr-1"></i>已关注';
+            btn.classList.remove('bg-primary/10', 'text-primary', 'hover:bg-primary', 'hover:text-white');
+            btn.classList.add('bg-gray-200', 'text-gray-600', 'cursor-default');
+            // 可选：显示提示
+            console.log(`${currentUser.username} 已关注 ${username}`);
+        } else {
+            btn.innerHTML = '<i class="fa fa-plus mr-1"></i>关注';
+            btn.classList.remove('bg-gray-200', 'text-gray-600', 'cursor-default');
+            btn.classList.add('bg-primary/10', 'text-primary', 'hover:bg-primary', 'hover:text-white');
+            console.log(`${currentUser.username} 已取消关注 ${username}`);
+        }
+    }
+    
+    // 处理"换一批"按钮
+    if (e.target.closest('.refresh-recommend')) {
+        e.preventDefault();
+        
+        // 换一批不需要登录检查
+        const container = document.querySelector('.space-y-4');
+        if (!container) return;
+        
+        // 模拟刷新数据
+        const newUsers = [
+            { name: 'Python高手', tag: '后端开发', followers: '3.2k', initial: 'P' },
+            { name: '摄影爱好者', tag: '摄影技巧', followers: '4.5k', initial: '摄' },
+            { name: '健身教练', tag: '运动健身', followers: '6.7k', initial: '健' },
+            { name: '读书笔记', tag: '阅读分享', followers: '2.1k', initial: '读' },
+            { name: 'AI探索者', tag: '人工智能', followers: '7.8k', initial: 'A' },
+            { name: '旅行日记', tag: '旅游攻略', followers: '3.9k', initial: '旅' }
+        ];
+        
+        const colors = [
+            'from-blue-400 to-purple-500',
+            'from-green-400 to-teal-500', 
+            'from-orange-400 to-pink-500',
+            'from-purple-400 to-indigo-500',
+            'from-red-400 to-orange-500',
+            'from-cyan-400 to-blue-500',
+            'from-yellow-400 to-red-500',
+            'from-indigo-400 to-purple-500'
+        ];
+        
+        const userItems = container.querySelectorAll('.flex.items-center.justify-between');
+        
+        // 随机打乱用户列表
+        const shuffled = [...newUsers].sort(() => Math.random() - 0.5);
+        
+        userItems.forEach((item, index) => {
+            if (index < shuffled.length) {
+                const user = shuffled[index];
+                const colorIndex = Math.floor(Math.random() * colors.length);
+                
+                // 更新头像
+                const avatarDiv = item.querySelector('.w-10.h-10');
+                if (avatarDiv) {
+                    avatarDiv.className = `w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br ${colors[colorIndex]} flex items-center justify-center text-white font-bold text-sm`;
+                    avatarDiv.innerHTML = `<span>${user.initial}</span>`;
+                }
+                
+                // 更新用户名和标签
+                const nameEl = item.querySelector('.font-medium');
+                const tagEl = item.querySelector('.text-xs.text-gray-400');
+                if (nameEl) nameEl.textContent = user.name;
+                if (tagEl) tagEl.textContent = `${user.tag} · ${user.followers}关注`;
+                
+                // 重置关注按钮
+                const btn = item.querySelector('.follow-btn');
+                if (btn) {
+                    btn.innerHTML = '<i class="fa fa-plus mr-1"></i>关注';
+                    btn.classList.remove('bg-gray-200', 'text-gray-600', 'cursor-default');
+                    btn.classList.add('bg-primary/10', 'text-primary', 'hover:bg-primary', 'hover:text-white');
+                }
+            }
+        });
+        
+        console.log('已刷新推荐用户');
+    }
+});
+
+// 初始化关注按钮状态（登录后恢复关注状态）
+function initFollowButtons() {
+    // 确保所有关注按钮都有正确的初始状态
+    document.querySelectorAll('.follow-btn').forEach(btn => {
+        if (!btn.innerHTML.includes('fa-plus') && !btn.innerHTML.includes('fa-check')) {
+            btn.innerHTML = '<i class="fa fa-plus mr-1"></i>关注';
+        }
+    });
+    
+    // 如果已登录，可以从服务器获取关注列表并更新按钮状态（可选）
+    if (currentUser) {
+        console.log(`当前登录用户: ${currentUser.username}`);
+        // 这里可以添加从服务器获取关注列表的逻辑
+        // fetchUserFollowList(currentUser.id).then(...)
+    }
+}
+
+// 登录成功后重置推荐用户的关注状态
+function resetRecommendFollowStatus() {
+    // 登录后，将所有推荐用户的关注按钮重置为未关注状态
+    // 实际项目中应该从服务器获取用户的关注列表来决定按钮状态
+    document.querySelectorAll('.follow-btn').forEach(btn => {
+        btn.innerHTML = '<i class="fa fa-plus mr-1"></i>关注';
+        btn.classList.remove('bg-gray-200', 'text-gray-600', 'cursor-default');
+        btn.classList.add('bg-primary/10', 'text-primary', 'hover:bg-primary', 'hover:text-white');
+    });
+}
+// ---------- 搜索功能 ----------
+async function performSearch(keyword) {
+    if (!keyword.trim()) {
+        alert('请输入搜索关键词');
+        return;
+    }
+    
+    currentSearchKeyword = keyword;
+    currentCategory = 'all';
+    
+    // 清空导航高亮
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('nav-active', 'text-primary');
+        link.classList.add('text-gray-600');
+    });
+    document.querySelector('.nav-link[data-category="all"]')?.classList.add('nav-active');
+    
+    const container = document.getElementById('postsContainer');
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 搜索中...</div>';
+    
+    try {
+        const res = await fetch(`/api/posts/search?q=${encodeURIComponent(keyword)}`);
+        const posts = await res.json();
+        
+        if (posts.length === 0) {
+            container.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-gray-500">未找到包含"${keyword}"的帖子</div>`;
+            return;
+        }
+        
+        renderPosts(posts);
+    } catch (e) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">搜索失败，请重试</div>';
+    }
+}
+// 切换用户菜单
+function toggleUserMenu(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('show');
+    }
+}
+
+// 跳转页面（关闭菜单后跳转）
+function goToPage(url) {
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) {
+        dropdown.classList.remove('show');
+    }
+    window.location.href = url;
+}
+
+// 点击页面其他地方关闭菜单
+document.addEventListener('click', function(e) {
+    const userMenu = document.getElementById('userMenu');
+    const dropdown = document.getElementById('userDropdown');
+    
+    if (userMenu && dropdown && !userMenu.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
+// 加载热门话题
+async function loadHotTopics() {
+    const container = document.getElementById('hotTopicsList');
+    
+    try {
+        const res = await fetch('/api/posts/hot?limit=5');
+        const posts = await res.json();
+        
+        if (posts.length === 0) {
+            container.innerHTML = '<div class="text-center py-4 text-gray-400">暂无热门话题</div>';
+            return;
+        }
+        
+        // 只取前5条
+const top5 = posts.slice(0, 5);
+
+container.innerHTML = top5.map((post, index) => {
+            // 排名颜色
+            const rankColors = ['text-primary', 'text-gray-400', 'text-gray-400', 'text-gray-400', 'text-gray-400'];
+            
+            return `
+                <div class="topic-item flex items-center justify-between cursor-pointer py-1" onclick="goToTopic(${post.id})">
+                    <div class="flex items-center flex-1">
+                        <span class="${rankColors[index]} font-bold mr-3 w-5">${index + 1}</span>
+                        <span class="text-sm font-medium text-gray-700 truncate hover:text-primary transition-colors">${escapeHtml(post.title)}</span>
+                    </div>
+                    <span class="text-xs text-gray-400 ml-2"><i class="fa fa-comment-o mr-1"></i>${post.comments || 0}</span>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('加载热门话题失败:', e);
+        container.innerHTML = '<div class="text-center py-4 text-red-400">加载失败</div>';
+    }
+}
+// 分类筛选
+function filterByCategory(category) {
+    // 更新分类高亮
+    document.querySelectorAll('.category-link').forEach(link => {
+        link.classList.remove('nav-active', 'text-primary');
+        link.classList.add('text-gray-600');
+    });
+    
+    const activeLink = document.querySelector(`.category-link[data-category="${category}"]`);
+    if (activeLink) {
+        activeLink.classList.add('nav-active');
+        activeLink.classList.remove('text-gray-600');
+    }
+    
+    // 加载对应分类的帖子
+    loadPostsByCategory(category);
+}
+
+// ---------- 分类管理 ----------
+let selectedTags = ['其他'];  // 多标签选择
+let userCategories = ['技术', '创意', '生活', '问答', '其他'];
+
+// 加载用户分类
+async function loadCategories() {
+    if (!currentUser) return;
+    
+    try {
+        const res = await fetch(`/api/categories?username=${currentUser.username}`);
+        const categories = await res.json();
+        userCategories = categories;
+        renderCategoryTags();
+    } catch (e) {
+        console.error('加载分类失败:', e);
+    }
+}
+
+// 渲染分类标签
+function renderCategoryTags() {
+    const container = document.getElementById('categoryTags');
+    if (!container) return;
+    
+    container.innerHTML = userCategories.map(cat => {
+        const isSelected = selectedTags.includes(cat);
+        return `
+        <span class="category-tag px-3 py-1 rounded-full text-sm cursor-pointer transition-colors ${isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" 
+              onclick="toggleTag('${cat}')">
+            ${cat}
+        </span>
+    `}).join('');
+}
+
+// 选择分类
+function selectCategory(category) {
+    // 已弃用，使用 toggleTag 代替
+    toggleTag(category);
+}
+
+// 添加自定义分类
+async function addCustomCategory() {
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    
+    const input = document.getElementById('newCategoryInput');
+    const name = input.value.trim();
+    
+    if (!name) {
+        alert('请输入分类名称');
+        return;
+    }
+    
+    if (userCategories.includes(name)) {
+        alert('该分类已存在');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/categories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser.username, name: name })
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            userCategories.push(name);
+            selectedCategory = name;
+            renderCategoryTags();
+            input.value = '';
+        } else {
+            alert(data.msg);
+        }
+    } catch (e) {
+        alert('添加失败，请重试');
+    }
+}
+
+// 修改发布帖子事件
+document.getElementById('publishPostBtn').addEventListener('click', async () => {
+    if (!currentUser) {
+        alert('请先登录');
+        return openModal('login');
+    }
+    const title = document.getElementById('postTitle').value.trim();
+    const content = document.getElementById('postContent').value.trim();
+    if (!title || !content) return alert('标题和内容不能为空');
+    
+    const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            title, 
+            content, 
+            author: currentUser.username,
+            tags: selectedTags.join(',')
+        })
+    });
+    const data = await res.json();
+    alert(data.msg);
+    if (data.status === 'success') {
+        closeModal('post');
+        document.getElementById('postTitle').value = '';
+        document.getElementById('postContent').value = '';
+        selectedTags = ['其他'];
+        renderCategoryTags();
+        loadPosts();
+    }
+});
+
+// 在打开发帖模态框时加载分类
+const originalOpenModal = openModal;
+openModal = function(type) {
+    originalOpenModal(type);
+    if (type === 'post' && currentUser) {
+        loadCategories();
+    }
+};
+// 切换标签（支持多选）
+function toggleTag(tag) {
+    if (selectedTags.includes(tag)) {
+        selectedTags = selectedTags.filter(t => t !== tag);
+    } else {
+        selectedTags.push(tag);
+    }
+    if (selectedTags.length === 0) {
+        selectedTags = ['其他'];
+    }
+    renderCategoryTags();
+}
+// 删除帖子
+async function deletePost(postId, event) {
+    event.stopPropagation(); // 阻止冒泡，防止触发卡片点击
+    
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    
+    if (!confirm('确定要删除这篇帖子吗？此操作不可撤销。')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/api/posts/${postId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: currentUser.username })
+        });
+        const data = await res.json();
+        alert(data.msg);
+        
+        if (data.status === 'success') {
+            loadPosts(); // 刷新帖子列表
+        }
+    } catch (e) {
+        alert('删除失败，请重试');
+    }
+}
+async function loadAnnouncements() {
+    const container = document.getElementById('announcementsList');
+    try {
+        const res = await fetch('/api/announcements');
+        const anns = await res.json();
+        if (anns.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-400 text-center">暂无公告</p>';
+            return;
+        }
+                container.innerHTML = anns.map((a, i) => `
+            <div class="${i < anns.length - 1 ? 'border-b border-gray-100 pb-3' : ''}">
+                <p class="text-sm font-medium text-gray-800">${escapeHtml(a.title)}</p>
+                <p class="text-xs text-gray-500 mt-1">${escapeHtml(a.content)}</p>
+                ${a.media_type === 'audio' && a.media_url ? `<audio controls class="mt-1 w-full"><source src="${escapeHtml(a.media_url)}"></audio>` : ''}
+                ${a.media_type === 'video' && a.media_url ? `<video controls class="mt-1 w-full rounded"><source src="${escapeHtml(a.media_url)}"></video>` : ''}
+                <p class="text-xs text-gray-400 mt-1">${new Date(a.created_at).toLocaleString()}</p>
+            </div>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<p class="text-sm text-red-400 text-center">加载失败</p>';
+    }
+}
+// ---------- 群组功能 ----------
+
+// 切换到群组视图
+async function switchToGroups() {
+    // 隐藏首页Tab栏
+    const container = document.getElementById('postsContainer');
+    const originalTabBar = container.previousElementSibling;
+    if (originalTabBar) originalTabBar.style.display = 'none';
+    
+    currentCategory = 'groups';
+    currentSearchKeyword = '';
+    document.getElementById('searchInput').value = '';
+    
+    // 更新导航样式
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('nav-active', 'text-primary');
+        link.classList.add('text-gray-600');
+    });
+    document.getElementById('navGroups')?.classList.add('nav-active');
+    document.getElementById('navGroups')?.classList.remove('text-gray-600');
+    
+    // 加载群组列表
+    await loadGroupsList();
+}
+
+// 加载群组列表
+async function loadGroupsList() {
+    const container = document.getElementById('postsContainer');
+    
+    // 隐藏首页Tab栏
+    const originalTabBar = container.previousElementSibling;
+    if (originalTabBar) originalTabBar.style.display = 'none';
+    
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>';
+    
+    try {
+        const res = await fetch('/api/groups');
+        const groups = await res.json();
+        
+        if (groups.length === 0) {
+            container.innerHTML = `
+                <div class="bg-white rounded-xl p-8 text-center">
+                    <div class="text-5xl mb-4">👥</div>
+                    <p class="text-gray-500 mb-4">暂无群组</p>
+                    <button onclick="showCreateGroupForm()" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90">
+                        <i class="fa fa-plus mr-2"></i>创建第一个群组
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm p-4 mb-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-bold text-lg">所有群组</h2>
+                    <button onclick="showCreateGroupForm()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary/90">
+                        <i class="fa fa-plus mr-1"></i>创建群组
+                    </button>
+                </div>
+            </div>
+            ${groups.map(group => `
+                <div class="bg-white rounded-xl shadow-sm p-5 card-hover cursor-pointer" onclick="goToGroup(${group.id})">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                                ${group.name ? group.name.charAt(0).toUpperCase() : 'G'}
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-lg">${group.name}</h3>
+                                <p class="text-sm text-gray-500 mt-1">${group.description || '暂无简介'}</p>
+                                <div class="flex items-center space-x-3 mt-2 text-xs text-gray-400">
+                                    <span><i class="fa fa-user mr-1"></i>${group.member_count} 成员</span>
+                                    <span><i class="fa fa-file-text mr-1"></i>${group.post_count} 帖子</span>
+                                    <span>创建者：${group.creator}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-gray-400">
+                            <i class="fa fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        `;
+    } catch (e) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败，请刷新重试</div>';
+    }
+}
+
+// 显示创建群组表单
+function showCreateGroupForm() {
+    if (!currentUser) {
+        alert('请先登录');
+        openModal('login');
+        return;
+    }
+    
+    const container = document.getElementById('postsContainer');
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h2 class="font-bold text-lg mb-4">创建群组</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">群组名称</label>
+                    <input type="text" id="groupName" placeholder="输入群组名称" 
+                           class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">群组简介</label>
+                    <textarea id="groupDescription" rows="3" placeholder="描述群组的主题和目的" 
+                              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"></textarea>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="createGroup()" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90">
+                        创建群组
+                    </button>
+                    <button onclick="loadGroupsList()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300">
+                        取消
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 创建群组
+async function createGroup() {
+    const name = document.getElementById('groupName').value.trim();
+    const description = document.getElementById('groupDescription').value.trim();
+    
+    if (!name) {
+        alert('请输入群组名称');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                description: description,
+                creator: currentUser.username
+            })
+        });
+        
+        const data = await res.json();
+        alert(data.msg);
+        
+        if (data.status === 'success') {
+            loadGroupsList();
+        }
+    } catch (e) {
+        alert('创建失败，请重试');
+    }
+}
+
+// 跳转到群组详情页 - 改为在当前页面显示群组帖子
+function goToGroup(groupId) {
+    // 直接在当前页面加载群组帖子
+    loadSingleGroup(groupId);
+}
+
+// 加载单个群组（首页内嵌视图）
+async function loadSingleGroup(groupId) {
+    const container = document.getElementById('postsContainer');
+    container.innerHTML = '<div class="text-center py-10 text-gray-400"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>';
+    
+    try {
+        const groupRes = await fetch(`/api/groups/${groupId}`);
+        const groupData = await groupRes.json();
+        
+        if (groupData.status !== 'success') {
+            container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">群组不存在</div>';
+            return;
+        }
+        
+        const group = groupData.group;
+        const isMember = currentUser && group.members.some(m => m.username === currentUser.username);
+        
+        // 获取群组帖子
+        const postsRes = await fetch(`/api/groups/${groupId}/posts`);
+        const posts = await postsRes.json();
+        
+         // 隐藏首页原始Tab栏
+        const originalTabBar = container.previousElementSibling;
+        if (originalTabBar && originalTabBar.classList.contains('bg-white')) {
+            originalTabBar.style.display = 'none';
+        }
+
+        // 渲染（包含三个Tab）
+        container.innerHTML = `
+            <!-- 群组头部 -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
+                            ${group.name ? group.name.charAt(0).toUpperCase() : 'G'}
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold">${group.name}</h2>
+                            <p class="text-gray-500 text-sm">${group.description || ''}</p>
+                            <div class="flex items-center space-x-3 mt-1 text-xs text-gray-400">
+                                <span><i class="fa fa-user mr-1"></i>${group.member_count} 成员</span>
+                                <span><i class="fa fa-file-text mr-1"></i>${group.post_count} 帖子</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="switchToGroups()" class="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-300">
+                        <i class="fa fa-arrow-left mr-1"></i>返回群组列表
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tab切换 -->
+            <div class="bg-white rounded-xl shadow-sm p-3 mb-4">
+                <div class="flex overflow-x-auto">
+                    <button class="tab-btn active whitespace-nowrap px-4 py-2 font-medium" data-grouptab="posts" 
+                            onclick="switchGroupTab(this, ${group.id}, '${isMember}')">
+                        最新发布
+                    </button>
+                    <button class="tab-btn whitespace-nowrap px-4 py-2 text-gray-600 font-medium" data-grouptab="members"
+                            onclick="switchGroupTab(this, ${group.id}, '${isMember}')">
+                        群组成员
+                    </button>
+                    <button class="tab-btn whitespace-nowrap px-4 py-2 text-gray-600 font-medium" data-grouptab="chat"
+                            onclick="switchGroupTab(this, ${group.id}, '${isMember}')">
+                        群组聊天
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tab内容区 -->
+            <div id="groupTabContent"></div>
+        `;
+        
+        // 默认显示帖子列表
+        document.getElementById('groupTabContent').innerHTML = renderGroupPosts(posts, isMember, group.id);
+        window._currentGroup = group;
+        
+    } catch (e) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败</div>';
+    }
+}
+
+// 切换群组Tab
+function switchGroupTab(btn, groupId, isMember) {
+    document.querySelectorAll('[data-grouptab]').forEach(b => {
+        b.classList.remove('active');
+        b.classList.add('text-gray-600');
+    });
+    btn.classList.add('active');
+    btn.classList.remove('text-gray-600');
+    
+    const tab = btn.getAttribute('data-grouptab');
+    const contentEl = document.getElementById('groupTabContent');
+    
+    if (tab === 'posts') {
+        fetch(`/api/groups/${groupId}/posts`).then(r => r.json()).then(posts => {
+            contentEl.innerHTML = renderGroupPosts(posts, isMember, groupId);
+        });
+    } else if (tab === 'members') {
+        const group = window._currentGroup;
+        if (group && group.members) {
+            contentEl.innerHTML = renderGroupMembers(group.members);
+        }
+    } else if (tab === 'chat') {
+        contentEl.innerHTML = renderGroupChat(groupId, isMember, window._currentGroup);
+        if (isMember) loadGroupChatMessages(groupId);
+    }
+}
+
+// 渲染帖子列表
+function renderGroupPosts(posts, isMember, groupId) {
+    if (!posts || posts.length === 0) {
+        return `
+            <div class="bg-white rounded-xl p-8 text-center">
+                <p class="text-gray-500">暂无帖子</p>
+            </div>
+        `;
+    }
+    return posts.map(post => `
+        <div class="bg-white rounded-xl shadow-sm p-4 mb-4 cursor-pointer" onclick="goToTopic(${post.id})">
+            <div class="flex items-start">
+                <img src="${escapeHtml(post.author_avatar || '/api/default-avatar?name=' + encodeURIComponent(post.author))}" 
+                     class="w-10 h-10 rounded-full object-cover"
+                     onerror="this.src='/api/default-avatar?name=${encodeURIComponent(post.author)}'">
+                <div class="ml-3 flex-1">
+                    <span class="font-medium text-sm">${escapeHtml(post.author)}</span>
+                    <h4 class="font-medium mt-1">${escapeHtml(post.title)}</h4>
+                    <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(post.content)}</p>
+                    <div class="flex items-center space-x-4 mt-2 text-xs text-gray-400">
+                        <span><i class="fa fa-eye mr-1"></i>${post.views || 0}</span>
+                        <span><i class="fa fa-comment-o mr-1"></i>${post.comments || 0}</span>
+                        <span><i class="fa fa-heart-o mr-1"></i>${post.likes || 0}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 渲染成员列表
+function renderGroupMembers(members) {
+    const group = window._currentGroup;
+    const isAdmin = group && group.members && currentUser && group.members.some(m => m.username === currentUser.username && (m.role === 'admin' || m.role === 'moderator'));
+    return `
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-lg">群组成员（${members.length}人）</h3>
+                ${isAdmin ? `
+                    <button onclick="showInviteModal(${group.id})" class="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary/90">
+                        <i class="fa fa-user-plus mr-1"></i>邀请成员
+                    </button>
+                ` : ''}
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                ${members.map(m => `
+                    <div class="flex items-center space-x-3 p-3 rounded-lg">
+                        <img src="${m.avatar || '/api/default-avatar?name=' + m.username}" 
+                             class="w-10 h-10 rounded-full"
+                             onerror="this.src='/api/default-avatar?name=${m.username}'">
+                        <div>
+                            <p class="font-medium text-sm">${m.username}</p>
+                            <p class="text-xs text-gray-400">${m.role === 'admin' ? '👑 群主' : '成员'}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// 渲染聊天区
+function renderGroupChat(groupId, isMember, group) {
+    if (!isMember) {
+        return `
+            <div class="bg-white rounded-xl p-8 text-center">
+                <p class="text-gray-500">加入群组后才能参与聊天</p>
+            </div>
+        `;
+    }
+    setTimeout(() => loadGroupChatMessages(groupId), 100);
+    return `
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div id="groupChatMessages" class="chat-messages p-6">
+                <div class="text-center text-gray-400 text-sm">加载中...</div>
+            </div>
+            <div class="px-4 py-3 border-t bg-light flex space-x-2">
+                <input type="text" id="groupChatInput" placeholder="输入消息..." 
+                       class="flex-1 px-4 py-2 border rounded-full text-sm"
+                       onkeypress="if(event.key==='Enter') sendGroupChatMsg(${groupId})">
+                <button onclick="sendGroupChatMsg(${groupId})" class="bg-primary text-white px-4 py-2 rounded-full text-sm">
+                    <i class="fa fa-send"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function loadGroupChatMessages(groupId) {
+    try {
+        const res = await fetch(`/api/groups/${groupId}/chat`);
+        const msgs = await res.json();
+        const el = document.getElementById('groupChatMessages');
+        if (!el) return;
+        if (!msgs || msgs.length === 0) {
+            el.innerHTML = '<div class="text-center text-gray-400 text-sm">暂无消息</div>';
+            return;
+        }
+        el.innerHTML = msgs.map(m => {
+            const isMine = currentUser && m.username === currentUser.username;
+            return `
+                <div class="chat-message ${isMine ? 'mine' : 'other'}">
+                    ${!isMine ? `<p class="text-xs text-gray-400 mb-1 ml-1">${escapeHtml(m.username)}</p>` : ''}
+                    <div class="chat-bubble">${escapeHtml(m.content)}</div>
+                    <p class="text-xs text-gray-400 mt-1 ${isMine ? 'text-right mr-1' : 'ml-1'}">${new Date(m.created_at).toLocaleTimeString()}</p>
+                </div>
+            `;
+        }).join('');
+        el.scrollTop = el.scrollHeight;
+    } catch(e) {}
+}
+
+async function sendGroupChatMsg(groupId) {
+    const input = document.getElementById('groupChatInput');
+    if (!input || !input.value.trim()) return;
+    try {
+        await fetch(`/api/groups/${groupId}/chat`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: currentUser.username, content: input.value.trim()})
+        });
+        input.value = '';
+        loadGroupChatMessages(groupId);
+    } catch(e) {}
+}
+document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const category = this.getAttribute('data-category');
+        
+        if (category === 'groups') {
+            switchToGroups();
+        } else if (category === 'all') {
+            switchCategory('all');
+        } else {
+            switchCategory(category);
+        }
+    });
+});
+// 显示邀请成员模态框
+function showInviteModal(groupId) {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.id = 'inviteModal';
+    modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 relative">
+            <button onclick="document.getElementById('inviteModal').remove()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fa fa-times"></i>
+            </button>
+            <h2 class="text-xl font-bold mb-4">邀请成员</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">输入要邀请的用户名</label>
+                <input type="text" id="inviteUsername" placeholder="用户名" 
+                       class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20">
+            </div>
+            <button onclick="inviteMember(${groupId})" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">
+                <i class="fa fa-user-plus mr-2"></i>邀请加入
+            </button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// 邀请成员
+async function inviteMember(groupId) {
+    const username = document.getElementById('inviteUsername').value.trim();
+    
+    if (!username) {
+        alert('请输入用户名');
+        return;
+    }
+    
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/api/groups/${groupId}/invite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operator: currentUser.username,
+                username: username
+            })
+        });
+        
+        const data = await res.json();
+        alert(data.msg);
+        
+        if (data.status === 'success') {
+            // 关闭模态框
+            const modal = document.getElementById('inviteModal');
+            if (modal) modal.remove();
+            
+            // 刷新群组页面
+            loadSingleGroup(groupId);
+        }
+    } catch (e) {
+        alert('邀请失败，请重试');
+    }
+}
+</script>
+</body>
+</html>
