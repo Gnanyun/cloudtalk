@@ -1905,36 +1905,6 @@ def send_group_chat(group_id):
     
     return jsonify({'status': 'success', 'msg': '发送成功'})
 
-# ---------- 临时诊断接口（排查完请删除）----------
-@app.route('/api/debug-db')
-def debug_db():
-    import os
-    result = {
-        'DB_PATH_env': os.environ.get('DB_PATH', 'NOT SET'),
-        'DB_PATH_var': DB_PATH,
-        'cwd': os.getcwd(),
-        'data_dir_exists': os.path.exists('/data'),
-        'data_dir_files': [],
-        'cwd_files': [],
-    }
-    try:
-        if os.path.exists('/data'):
-            result['data_dir_files'] = os.listdir('/data')
-    except Exception as e:
-        result['data_dir_error'] = str(e)
-    try:
-        result['cwd_files'] = os.listdir('.')
-    except Exception as e:
-        result['cwd_error'] = str(e)
-    
-    # 检查数据库文件
-    try:
-        result['db_exists_at_DB_PATH'] = os.path.exists(DB_PATH)
-        result['db_size'] = os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0
-    except Exception as e:
-        result['db_error'] = str(e)
-    
-    return jsonify(result)
 
 # ---------- 启动服务 ----------
 # 修改后（兼容 Railway）
