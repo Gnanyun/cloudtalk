@@ -18,10 +18,6 @@ DB_PATH = os.environ.get('DB_PATH', 'database.db')
 # SECRET_KEY（用于会话签名，防止会话伪造）
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
-# ==================== 安全配置（补丁一新增，全部为增量）====================
-
-# SECRET_KEY（用于会话签名，防止会话伪造）
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
 # 会话 Cookie 安全属性
 app.config['SESSION_COOKIE_HTTPONLY'] = True
