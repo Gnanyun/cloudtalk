@@ -565,12 +565,14 @@ async function loadSidebarStats() {
     }
 }
 // 登出
-function logout() {
+async function logout() {
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+    } catch (e) {}
     currentUser = null;
-    // 清除 localStorage
     localStorage.removeItem('currentUser');
     updateAuthUI();
-    resetRecommendFollowStatus(); // 退出后重置关注状态
+    resetRecommendFollowStatus();
     alert('已退出登录');
 }
 
