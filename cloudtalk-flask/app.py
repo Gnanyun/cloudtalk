@@ -10,6 +10,14 @@ from functools import wraps
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 
+# ---------- 数据库路径（支持 Railway Volume 持久化）----------
+DB_PATH = os.environ.get('DB_PATH', 'database.db')
+
+# ==================== 安全配置（补丁一新增，全部为增量）====================
+
+# SECRET_KEY（用于会话签名，防止会话伪造）
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
 # ==================== 安全配置（补丁一新增，全部为增量）====================
 
 # SECRET_KEY（用于会话签名，防止会话伪造）
@@ -46,7 +54,7 @@ def allowed_file(filename):
 
 # ---------- 数据库初始化 ----------
 def init_db():
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
     # =====  新增：管理员表（放在最前面）=====
@@ -217,7 +225,7 @@ init_db()
 
 # ---------- 数据库连接 ----------
 def get_db():
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
