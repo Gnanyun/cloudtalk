@@ -738,6 +738,11 @@ async function loadPosts() {
             container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-gray-500">暂无帖子，快来发布第一条吧！</div>';
             return;
         }
+        renderPosts(posts);
+    } catch (e) {
+        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败，请刷新重试</div>';
+    }
+}
         container.innerHTML = posts.map(post => `
             <div class="bg-white rounded-xl shadow-sm overflow-hidden card-hover cursor-pointer" onclick="goToTopic(${post.id})">
                 <div class="p-5">
