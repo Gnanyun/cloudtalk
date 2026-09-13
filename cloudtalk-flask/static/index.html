@@ -1483,7 +1483,7 @@ async function loadGroupsList() {
                                 <div class="flex items-center space-x-3 mt-2 text-xs text-gray-400">
                                     <span><i class="fa fa-user mr-1"></i>${group.member_count} 成员</span>
                                     <span><i class="fa fa-file-text mr-1"></i>${group.post_count} 帖子</span>
-                                    <span>创建者：${group.creator}</span>
+                                   <span>创建者：${escapeHtml(group.creator_display || group.creator)}</span>
                                 </div>
                             </div>
                         </div>
