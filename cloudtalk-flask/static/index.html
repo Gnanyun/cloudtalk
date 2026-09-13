@@ -459,6 +459,12 @@ let currentTab = 'latest';
 let currentCategory = 'all';  // 新增：当前分类
 let currentSearchKeyword = ''; // 新增：当前搜索关键词
 
+// 跳转个人资料页
+function goToProfile(userId) {
+    if (!userId) return;
+    window.location.href = `/profile?id=${userId}`;
+}
+    
 // 工具函数：模态框
 function openModal(type) {
     document.getElementById(type + 'Modal').classList.add('active');
