@@ -1609,6 +1609,13 @@ def export_data(data_type):
         for c in comments:
             writer.writerow([c['id'], c['post_id'], c['author'], c['content'], c['created_at']])
         filename = f'评论数据_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+
+    elif data_type == 'announcements':
+        anns = conn.execute('SELECT id, title, content, media_type, media_url, created_at FROM announcements ORDER BY id').fetchall()
+        writer.writerow(['ID', '标题', '内容', '媒体类型', '媒体链接', '发布时间'])
+        for a in anns:
+            writer.writerow([a['id'], a['title'], a['content'], a['media_type'], a['media_url'], a['created_at']])
+        filename = f'公告数据_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
     
     else:
         conn.close()
