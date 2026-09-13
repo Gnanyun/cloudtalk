@@ -1978,26 +1978,6 @@ def send_group_chat(group_id):
     
     return jsonify({'status': 'success', 'msg': '发送成功'})
 
-# ---------- 临时改管理员密码（用完立刻删除）----------
-@app.route('/api/admin/change-password-temp', methods=['POST'])
-def temp_change_password():
-    data = request.get_json()
-    secret = data.get('secret', '')
-    new_password = data.get('new_password', '')
-    
-    # 检查一次性密钥
-    if secret != os.environ.get('SECRET_KEY', '')[:16]:
-        return jsonify({'status': 'error', 'msg': 'forbidden'}), 403
-    
-    if not new_password or len(new_password) < 8:
-        return jsonify({'status': 'error', 'msg': '新密码至少 8 位'}), 400
-    
-    hashed = generate_password_hash(new_password)
-    conn = get_db()
-    conn.execute("UPDATE admins SET password = ? WHERE username = 'admin'", (hashed,))
-    conn.commit()
-    conn.close()
-    return jsonify({'status': 'success', 'msg': '密码已修改'})
 
 # ---------- 启动服务 ----------
 # 修改后（兼容 Railway）
