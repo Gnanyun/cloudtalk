@@ -369,14 +369,9 @@ async function deleteAnnouncement(id) {
 
 function exportCurrentTab() {
     let type = currentActiveTab;
-    if (type === 'announcements') {
-        showToast('公告暂不支持导出', 'error');
-        return;
-    }
 
     const link = document.createElement('a');
     link.href = `/api/admin/export/${type}`;
-    // 注意：直接 a.href 不会带 Cookie，但因为已经在浏览器会话中，浏览器会自动附上同源 Cookie
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
