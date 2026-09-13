@@ -1222,7 +1222,7 @@ async function loadCategories() {
     if (!currentUser) return;
     
     try {
-        const res = await fetch(`/api/categories?username=${currentUser.username}`);
+        const res = await fetch('/api/categories');
         const categories = await res.json();
         userCategories = categories;
         renderCategoryTags();
