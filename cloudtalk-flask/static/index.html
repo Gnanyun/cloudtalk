@@ -676,21 +676,23 @@ function renderPosts(posts) {
     
     container.innerHTML = posts.map(post => {
         const isOwner = currentUser && currentUser.username === post.author;
+        const authorName = post.author_display || post.author || '匿名';
+        const authorId = post.author_id;
         
         return `
         <div class="bg-white rounded-xl shadow-sm overflow-hidden card-hover cursor-pointer" onclick="goToTopic(${post.id})">
             <div class="p-5">
                 <div class="flex items-start">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 cursor-pointer" onclick="event.stopPropagation(); goToProfile(${authorId || 0})">
                         <img src="${escapeHtml(post.author_avatar || '')}" 
                              alt="头像" 
                              class="w-full h-full object-cover"
-                             onerror="this.src='/api/default-avatar?name=${encodeURIComponent(post.author || '匿名')}'">
+                             onerror="this.src='/api/default-avatar?name=${encodeURIComponent(authorName)}'">
                     </div>
                     <div class="ml-3 flex-1">
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
-                                <span class="font-medium text-sm text-gray-700">${escapeHtml(post.author || '匿名')}</span>
+                                <span class="font-medium text-sm text-gray-700 cursor-pointer hover:text-primary" onclick="event.stopPropagation(); goToProfile(${authorId || 0})">${escapeHtml(authorName)}</span>
                                 <h4 class="font-medium text-base mt-1">${escapeHtml(post.title)}</h4>
                             </div>
                             <span class="text-xs text-gray-400 whitespace-nowrap ml-2">${new Date(post.created_at).toLocaleString()}</span>
