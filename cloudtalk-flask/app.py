@@ -1,8 +1,4 @@
-import os
-import uuid
-import sqlite3
-import hashlib
-import secrets
+
 from flask import Flask, request, jsonify, send_from_directory, Response, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image  # 需要 pip install Pillow
