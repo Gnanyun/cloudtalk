@@ -749,47 +749,9 @@ async function loadPosts() {
         container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败，请刷新重试</div>';
     }
 }
-        container.innerHTML = posts.map(post => `
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden card-hover cursor-pointer" onclick="goToTopic(${post.id})">
-                <div class="p-5">
-                    <div class="flex items-start">
-                        <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
-                            <img src="${escapeHtml(post.author_avatar || '')}" 
-                                 alt="头像" 
-                                 class="w-full h-full object-cover"
-                                 onerror="this.src='/api/default-avatar?name=${encodeURIComponent(post.author || '匿名')}'">
-                        </div>
-                        <div class="ml-3 flex-1">
-                            <div class="flex justify-between">
-                                <div>
-                                    <span class="font-medium text-sm text-gray-700">${escapeHtml(post.author || '匿名')}</span>
-                                    <h4 class="font-medium mt-1">${escapeHtml(post.title)}</h4>
-                                </div>
-                                <span class="text-xs text-gray-500 whitespace-nowrap ml-2">${new Date(post.created_at).toLocaleString()}</span>
-                            </div>
-                            <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(post.content)}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                        <div class="flex items-center space-x-4">
-                            <span class="inline-flex items-center text-xs text-gray-500">
-                                <i class="fa fa-tag mr-1"></i>${escapeHtml(post.tags || post.category || '话题')}
-                            </span>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            <span class="flex items-center text-gray-500"><i class="fa fa-eye mr-1"></i>${post.views || 0}</span>
-                            <span class="flex items-center text-gray-500"><i class="fa fa-comment-o mr-1"></i>${post.comments || 0}</span>
-                            <span class="flex items-center text-gray-500"><i class="fa fa-heart-o mr-1"></i>${post.likes || 0}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    } catch (e) {
-        container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-red-500">加载失败，请刷新重试</div>';
-    }
-}
 
+// 注册                                                          ← 紧接着就是下一段代码
+document.getElementById('registerBtn').addEventListener('click', async () => {
 // 注册
 document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('regUsername').value.trim();
