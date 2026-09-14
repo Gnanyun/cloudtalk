@@ -235,6 +235,56 @@ function goToProfile(userId) {
     window.location.href = `/profile?id=${userId}`;
 }
 
+// 收藏
+let isFavorited = false;
+
+async function loadFavoriteStatus() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch(`/api/topic/${topicId}/favorite-status`, { credentials: 'include' });
+        const data = await res.json();
+        isFavorited = data.favorited;
+        updateFavoriteButton();
+    } catch(e) {}
+}
+
+function updateFavoriteButton() {
+    const btn = document.getElementById('favoriteBtn');
+    if (!btn) return;
+    const icon = btn.querySelector('i');
+    const text = btn.querySelector('span');
+    if (isFavorited) {
+        icon.className = 'fa fa-bookmark text-xl text-yellow-500';
+        text.textContent = '已收藏';
+        btn.classList.add('text-yellow-500');
+    } else {
+        icon.className = 'fa fa-bookmark-o text-xl';
+        text.textContent = '收藏';
+        btn.classList.remove('text-yellow-500');
+    }
+}
+
+async function handleFavorite() {
+    if (!currentUser) {
+        alert('请先登录');
+        openModal('login');
+        return;
+    }
+    try {
+        const res = await fetch(`/api/topic/${topicId}/favorite`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            isFavorited = data.action === 'favorited';
+            updateFavoriteButton();
+        }
+    } catch(e) {
+        alert('操作失败');
+    }
+}
+
 // 模态框操作
 function openModal(type) {
     document.getElementById(type + 'Modal').classList.add('active');
@@ -323,6 +373,7 @@ async function loadTopic() {
         renderAuthorCard();
         renderRelatedPosts();
         loadComments();
+        loadFavoriteStatus();
         
         // 增加浏览量
         fetch(`/api/topic/${topicId}/view`, { method: 'POST' });
@@ -368,7 +419,7 @@ function renderTopicContent() {
                     <i class="fa ${isLiked ? 'fa-heart' : 'fa-heart-o'} text-xl"></i>
                     <span id="likeCount" class="font-medium">${topic.likes || 0}</span>
                 </button>
-                <button class="flex items-center space-x-1 text-gray-500">
+                <button id="favoriteBtn" class="flex items-center space-x-1 text-gray-500 hover:text-yellow-500 transition-colors" onclick="handleFavorite()">
                     <i class="fa fa-bookmark-o text-xl"></i>
                     <span class="hidden sm:inline">收藏</span>
                 </button>

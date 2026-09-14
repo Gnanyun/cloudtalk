@@ -25,6 +25,14 @@
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
+        function sendPrivateMessage() {
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    if (!viewingUsername) return;
+    window.location.href = `/messages?user=${encodeURIComponent(viewingUsername)}`;
+}
     </script>
     <style>
         .user-menu-wrapper { position: relative; }
@@ -110,6 +118,11 @@
                 <div class="flex-1">
                     <h1 class="text-2xl font-bold" id="profileDisplayName">加载中...</h1>
                     <p class="text-sm text-gray-500 mt-1" id="profileMeta"></p>
+                                    <div id="profileActions" class="mt-2 hidden">
+                    <button onclick="sendPrivateMessage()" class="text-xs bg-primary text-white px-3 py-1 rounded-full hover:bg-primary/90">
+                        <i class="fa fa-envelope-o mr-1"></i>发私信
+                    </button>
+                </div>
                     <p class="text-gray-500 mt-2" id="profileBio">这个人很懒，什么都没写~</p>
                     <div class="flex space-x-6 mt-3">
                         <div><span class="font-bold text-xl" id="profilePosts">0</span><span class="text-gray-500 text-sm ml-1">发帖</span></div>
@@ -189,7 +202,8 @@
                 <div class="flex space-x-6">
                     <button class="tab-btn active py-4 px-2 font-medium" data-tab="posts">帖子</button>
                     <button class="tab-btn py-4 px-2 text-gray-500 font-medium" data-tab="comments">评论</button>
-                    <button class="tab-btn py-4 px-2 text-gray-500 font-medium" data-tab="likes">点赞</button>
+                    <button class="tab-btn py-4 px-2 text-gray-500 font-medium" data-tab="likes">我的点赞</button>
+                    <button id="favoritesTabBtn" class="tab-btn py-4 px-2 text-gray-500 font-medium" data-tab="favorites">我的收藏</button>
                     <button id="followsTabBtn" class="tab-btn py-4 px-2 text-gray-500 font-medium" data-tab="follows">关注</button>
                 </div>
             </div>
@@ -260,6 +274,9 @@ async function init() {
         document.getElementById('avatarEditBtn').classList.remove('hidden');
         document.getElementById('editProfileBtn').classList.remove('hidden');
         document.getElementById('gardenSection').classList.remove('hidden');
+        document.getElementById('favoritesTabBtn').classList.remove('hidden');
+    } else {
+        document.getElementById('favoritesTabBtn').classList.add('hidden');
     }
 
     await loadProfile();
@@ -295,6 +312,12 @@ async function loadProfile() {
         document.getElementById('profileFollowing').textContent = p.following || 0;
         document.getElementById('profileLikes').textContent = p.likes || 0;
 
+                // 非自己时显示"发私信"
+        if (!isSelf && currentUser) {
+            document.getElementById('profileActions').classList.remove('hidden');
+        } else {
+            document.getElementById('profileActions').classList.add('hidden');
+        }
         viewingUserId = p.id;
         document.title = `${p.display_name || viewingUsername} - CloudTalk`;
     } catch (e) {
@@ -343,7 +366,7 @@ async function loadTabContent(tab) {
 }
 
 function getTabName(tab) {
-    return { posts: '帖子', comments: '评论', likes: '点赞', follows: '关注' }[tab] || '';
+    return { posts: '帖子', comments: '评论', likes: '点赞', favorites: '收藏', follows: '关注' }[tab] || '';
 }
 
 function renderTabContent(tab, data, container) {
@@ -380,6 +403,19 @@ function renderTabContent(tab, data, container) {
             </div>
         `).join('');
     } else if (tab === 'likes') {
+        container.innerHTML = data.map(post => `
+            <div class="border-b border-gray-100 last:border-0 py-4">
+                <a href="/topic?id=${post.id}" class="block hover:bg-light p-2 -m-2 rounded-lg">
+                    <h3 class="font-medium">${escapeHtml(post.title)}</h3>
+                    <p class="text-gray-500 text-sm mt-1">作者：${escapeHtml(post.author_display || post.author)}</p>
+                </a>
+            </div>
+        `).join('');
+    } else if (tab === 'favorites') {
+        if (!isSelf) {
+            container.innerHTML = '<div class="text-center py-10 text-gray-400">无法查看别人的收藏</div>';
+            return;
+        }
         container.innerHTML = data.map(post => `
             <div class="border-b border-gray-100 last:border-0 py-4">
                 <a href="/topic?id=${post.id}" class="block hover:bg-light p-2 -m-2 rounded-lg">

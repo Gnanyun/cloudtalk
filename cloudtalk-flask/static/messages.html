@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>私信 - CloudTalk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { primary: '#165DFF', dark: '#1D2129', light: '#F2F3F5' } } }
+        }
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+    </script>
+    <style>
+        .chat-messages { max-height: calc(100vh - 260px); overflow-y: auto; }
+        .chat-message { margin-bottom: 12px; }
+        .chat-message.mine { text-align: right; }
+        .chat-message.mine .chat-bubble { background: #165DFF; color: white; display: inline-block; }
+        .chat-message.other .chat-bubble { background: #F2F3F5; color: #1D2129; display: inline-block; }
+        .chat-bubble { padding: 10px 18px; border-radius: 18px; max-width: 75%; word-wrap: break-word; }
+    </style>
+</head>
+<body class="bg-light font-sans text-dark">
+
+<header class="sticky top-0 z-40 bg-white shadow-sm">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between h-16">
+            <a href="/" class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white">
+                    <i class="fa fa-comments-o text-xl"></i>
+                </div>
+                <span class="text-xl font-bold">CloudTalk</span>
+            </a>
+            <a href="/notifications" class="text-gray-600 hover:text-primary text-sm">
+                <i class="fa fa-arrow-left mr-1"></i>返回消息列表
+            </a>
+        </div>
+    </div>
+</header>
+
+<main class="container mx-auto px-4 py-6 max-w-3xl">
+    <div id="chatHeader" class="bg-white rounded-t-xl shadow-sm p-4 border-b border-gray-100 flex items-center">
+        <img id="peerAvatar" src="" class="w-10 h-10 rounded-full">
+        <div class="ml-3">
+            <p id="peerName" class="font-medium">加载中...</p>
+        </div>
+    </div>
+
+    <div id="chatMessages" class="chat-messages bg-white p-4 shadow-sm">
+        <div class="text-center py-10 text-gray-400">
+            <i class="fa fa-spinner fa-spin"></i> 加载中...
+        </div>
+    </div>
+
+    <div class="bg-white rounded-b-xl shadow-sm p-4 border-t border-gray-100 flex space-x-2">
+        <input type="text" id="msgInput" placeholder="输入消息..."
+               class="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-primary/20"
+               onkeypress="if(event.key==='Enter') sendMessage()">
+        <button onclick="sendMessage()" class="bg-primary text-white px-5 py-2 rounded-full hover:bg-primary/90">
+            <i class="fa fa-send"></i>
+        </button>
+    </div>
+</main>
+
+<script>
+let currentUser = null;
+let peerUsername = null;
+let refreshInterval = null;
+
+function getUrlParam(name) {
+    return new URLSearchParams(window.location.search).get(name);
+}
+
+async function loadChat() {
+    try {
+        const res = await fetch(`/api/messages/${encodeURIComponent(peerUsername)}`, { credentials: 'include' });
+        if (res.status === 401) { location.href = '/'; return; }
+        const msgs = await res.json();
+        renderMessages(msgs);
+    } catch(e) {}
+}
+
+function renderMessages(msgs) {
+    const c = document.getElementById('chatMessages');
+    if (!msgs.length) {
+        c.innerHTML = '<div class="text-center py-10 text-gray-400 text-sm">还没有消息，发送第一条吧~</div>';
+        return;
+    }
+    c.innerHTML = msgs.map(m => {
+        const isMine = currentUser && m.sender === currentUser.username;
+        return `
+            <div class="chat-message ${isMine ? 'mine' : 'other'}">
+                <div class="chat-bubble">${escapeHtml(m.content)}</div>
+                <p class="text-xs text-gray-400 mt-1 ${isMine ? 'text-right mr-1' : 'ml-1'}">
+                    ${new Date(m.created_at).toLocaleTimeString()}
+                </p>
+            </div>`;
+    }).join('');
+    c.scrollTop = c.scrollHeight;
+}
+
+async function sendMessage() {
+    const input = document.getElementById('msgInput');
+    const content = input.value.trim();
+    if (!content) return;
+    try {
+        const res = await fetch(`/api/messages/${encodeURIComponent(peerUsername)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ content })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            input.value = '';
+            loadChat();
+        } else {
+            alert(data.msg);
+        }
+    } catch(e) { alert('发送失败'); }
+}
+
+// 页面加载
+(async () => {
+    const saved = localStorage.getItem('currentUser');
+    if (saved) {
+        try { currentUser = JSON.parse(saved); } catch(e) {}
+    }
+    if (!currentUser) { location.href = '/'; return; }
+
+    peerUsername = getUrlParam('user');
+    if (!peerUsername) { location.href = '/notifications'; return; }
+    if (peerUsername === currentUser.username) {
+        alert('不能和自己私信');
+        location.href = '/notifications';
+        return;
+    }
+
+    // 加载对方资料
+    try {
+        const res = await fetch(`/api/user/profile/${encodeURIComponent(peerUsername)}`, { credentials: 'include' });
+        const data = await res.json();
+        if (data.status === 'success') {
+            const p = data.profile;
+            document.getElementById('peerAvatar').src = p.avatar || `/api/default-avatar?name=${encodeURIComponent(peerUsername)}`;
+            document.getElementById('peerName').textContent = p.display_name || peerUsername;
+            document.getElementById('peerAvatar').onclick = () => location.href = `/profile?id=${p.id}`;
+        }
+    } catch(e) {}
+
+    loadChat();
+    // 每 5 秒刷新
+    refreshInterval = setInterval(loadChat, 5000);
+})();
+</script>
+</body>
+</html>

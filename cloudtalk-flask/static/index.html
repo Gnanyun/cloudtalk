@@ -225,7 +225,13 @@ function escapeHtml(str) {
                 <button id="publishBtn" onclick="openModal('post')" class="hidden bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg items-center whitespace-nowrap">
                     <i class="fa fa-pencil mr-2"></i><span>发布</span>
                 </button>
-                
+               
+<!-- 通知铃铛 -->
+<a href="/notifications" id="notifBell" class="hidden relative text-gray-600 hover:text-primary transition-colors">
+    <i class="fa fa-bell-o text-xl"></i>
+    <span id="notifBellBadge" class="hidden absolute -top-1 -right-1 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full"></span>
+</a>                
+
 <!-- 已登录时显示：用户头像菜单 -->
 <div id="userMenu" class="hidden relative user-menu-wrapper">
     <button onclick="toggleUserMenu(event)" class="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:shadow-md transition-shadow">
@@ -524,6 +530,13 @@ function updateAuthUI() {
         publishBtn.classList.remove('hidden');
         publishBtn.style.display = 'flex';
         sidebarUsername.textContent = currentUser.display_name || currentUser.username;
+        
+        // 显示铃铛 + 加载未读数
+        const bell = document.getElementById('notifBell');
+        if (bell) {
+            bell.classList.remove('hidden');
+            loadUnreadBadge();
+        }
 
         // 获取头像 URL
         let avatarUrl = currentUser.avatar || `/api/default-avatar?name=${encodeURIComponent(currentUser.username)}`;
@@ -555,6 +568,9 @@ function updateAuthUI() {
         publishBtn.classList.add('hidden');
         sidebarUsername.textContent = '云享用户';
         
+        const bell = document.getElementById('notifBell');
+        if (bell) bell.classList.add('hidden');
+        
         const defaultAvatar = '/api/default-avatar?name=云享用户';
         const topAvatar = document.getElementById('topAvatar');
         if (topAvatar) {
@@ -575,6 +591,25 @@ function updateAuthUI() {
             statDivs[2].textContent = '368';
         }
     }
+}
+
+// 加载未读通知/私信数
+async function loadUnreadBadge() {
+    if (!currentUser) return;
+    try {
+        const res = await fetch('/api/notifications/unread-count', { credentials: 'include' });
+        if (res.status !== 200) return;
+        const data = await res.json();
+        const badge = document.getElementById('notifBellBadge');
+        if (!badge) return;
+        const total = data.total || 0;
+        if (total > 0) {
+            badge.textContent = total > 99 ? '99+' : total;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    } catch(e) {}
 }
 
 // 加载侧边栏统计数据
@@ -872,6 +907,11 @@ window.onload = () => {
     loadHotTopics();
     loadAnnouncements();
     initFollowButtons();
+    if (currentUser) {
+        loadUnreadBadge();
+        // 每 30 秒刷新一次
+        setInterval(loadUnreadBadge, 30000);
+    }
 
         // 绑定标签页点击事件
     document.getElementById('tabLatest')?.addEventListener('click', () => switchTab('latest'));

@@ -8,44 +8,16 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#165DFF',
-                        secondary: '#36CFC9',
-                        dark: '#1D2129',
-                        light: '#F2F3F5',
-                    }
-                }
-            }
+            theme: { extend: { colors: { primary: '#165DFF', dark: '#1D2129', light: '#F2F3F5' } } }
+        }
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         }
     </script>
-    <style>
-        .user-menu-wrapper { position: relative; }
-        .user-menu-dropdown {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 100%;
-            margin-top: 0.5rem;
-            width: 12rem;
-            background: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-            padding: 0.5rem 0;
-            z-index: 200;
-        }
-.user-menu-dropdown.show {
-    display: block;
-}
-        .notification-item.unread {
-            background-color: #f0f7ff;
-        }
-    </style>
 </head>
-<body class="bg-light font-inter text-dark">
+<body class="bg-light font-sans text-dark">
 
-<!-- 顶部导航栏（与个人中心相同） -->
 <header class="sticky top-0 z-40 bg-white shadow-sm">
     <div class="container mx-auto px-4">
         <div class="flex items-center justify-between h-16">
@@ -55,145 +27,185 @@
                 </div>
                 <span class="text-xl font-bold">CloudTalk</span>
             </a>
-            
-            <nav class="hidden md:flex space-x-6">
-                <a href="/" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">首页</a>
-                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">技术区</a>
-                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">创意区</a>
-                <a href="#" class="px-1 py-2 font-medium text-gray-600 hover:text-primary">生活区</a>
-            </nav>
-            
             <div class="flex items-center space-x-3">
-<div id="userMenu" class="relative user-menu-wrapper">
-    <button onclick="toggleUserMenu(event)" class="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:shadow-md transition-shadow">
-        <img id="topAvatar" src="/api/default-avatar?name=用户" alt="头像" class="w-full h-full object-cover">
-    </button>
-    <div id="userDropdown" class="user-menu-dropdown absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
-        <a href="javascript:void(0)" onclick="goToPage('/profile')" class="block px-4 py-2 hover:bg-light">
-            <i class="fa fa-user mr-2"></i>个人中心
-        </a>
-        <a href="javascript:void(0)" onclick="goToPage('/notifications')" class="block px-4 py-2 hover:bg-light">
-            <i class="fa fa-bell mr-2"></i>消息通知
-        </a>
-        <a href="javascript:void(0)" onclick="goToPage('/settings')" class="block px-4 py-2 hover:bg-light">
-            <i class="fa fa-cog mr-2"></i>设置
-        </a>
-        <div class="border-t my-1"></div>
-        <a href="javascript:void(0)" onclick="logout()" class="block px-4 py-2 text-red-500 hover:bg-light">
-            <i class="fa fa-sign-out mr-2"></i>退出登录
-        </a>
-    </div>
-</div>
+                <a href="/" class="text-gray-600 hover:text-primary text-sm">← 返回首页</a>
+                <img id="topAvatar" src="/api/default-avatar?name=用户" class="w-9 h-9 rounded-full cursor-pointer" onclick="location.href='/profile'">
             </div>
         </div>
     </div>
 </header>
 
-<!-- 主内容区 -->
-<main class="container mx-auto px-4 py-6">
-    <div class="max-w-3xl mx-auto">
-        <div class="bg-white rounded-xl shadow-sm">
-            <div class="flex items-center justify-between p-6 border-b border-gray-100">
-                <h1 class="text-xl font-bold"><i class="fa fa-bell mr-2 text-primary"></i>消息通知</h1>
-                <button onclick="markAllRead()" class="text-sm text-primary hover:underline">全部已读</button>
-            </div>
-            
-            <div id="notificationsList" class="divide-y divide-gray-100">
-                <!-- 动态渲染 -->
-            </div>
+<main class="container mx-auto px-4 py-6 max-w-3xl">
+    <!-- Tab 切换 -->
+    <div class="bg-white rounded-xl shadow-sm mb-4">
+        <div class="flex border-b">
+            <button id="tabNotif" class="tab-btn flex-1 py-4 font-medium text-primary border-b-2 border-primary" onclick="switchTab('notif')">
+                <i class="fa fa-bell mr-2"></i>通知
+                <span id="notifBadge" class="hidden ml-2 px-2 py-0.5 text-xs bg-red-500 text-white rounded-full"></span>
+            </button>
+            <button id="tabMsg" class="tab-btn flex-1 py-4 font-medium text-gray-500" onclick="switchTab('msg')">
+                <i class="fa fa-envelope mr-2"></i>私信
+                <span id="msgBadge" class="hidden ml-2 px-2 py-0.5 text-xs bg-red-500 text-white rounded-full"></span>
+            </button>
+        </div>
+    </div>
+
+    <div id="content" class="bg-white rounded-xl shadow-sm">
+        <div class="text-center py-16 text-gray-400">
+            <i class="fa fa-spinner fa-spin text-2xl"></i>
+            <p class="mt-2 text-sm">加载中...</p>
         </div>
     </div>
 </main>
 
 <script>
+let currentTab = 'notif';
 let currentUser = null;
 
-function checkAuth() {
-    const savedUser = localStorage.getItem('currentUser');
-    if (!savedUser) {
-        window.location.href = '/';
-        return false;
+function getToken() { return ''; }  // 兼容占位，实际用 session cookie
+
+async function loadUnreadCount() {
+    try {
+        const res = await fetch('/api/notifications/unread-count', { credentials: 'include' });
+        if (res.status === 401) { location.href = '/'; return; }
+        const data = await res.json();
+        const nb = document.getElementById('notifBadge');
+        const mb = document.getElementById('msgBadge');
+        if (data.unread_notifications > 0) {
+            nb.textContent = data.unread_notifications;
+            nb.classList.remove('hidden');
+        } else { nb.classList.add('hidden'); }
+        if (data.unread_messages > 0) {
+            mb.textContent = data.unread_messages;
+            mb.classList.remove('hidden');
+        } else { mb.classList.add('hidden'); }
+    } catch(e) {}
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('text-primary', 'border-b-2', 'border-primary');
+        b.classList.add('text-gray-500');
+    });
+    if (tab === 'notif') {
+        const el = document.getElementById('tabNotif');
+        el.classList.add('text-primary', 'border-b-2', 'border-primary');
+        el.classList.remove('text-gray-500');
+        loadNotifications();
+    } else {
+        const el = document.getElementById('tabMsg');
+        el.classList.add('text-primary', 'border-b-2', 'border-primary');
+        el.classList.remove('text-gray-500');
+        loadConversations();
     }
-    currentUser = JSON.parse(savedUser);
-    document.getElementById('topAvatar').src = currentUser.avatar || `/api/default-avatar?name=${currentUser.username}`;
-    return true;
 }
 
 async function loadNotifications() {
-    if (!checkAuth()) return;
-    
-    const container = document.getElementById('notificationsList');
-    
-    // 模拟通知数据
-    const notifications = [
-        { id: 1, type: 'like', user: '技术先锋', content: '赞了你的帖子', post: '前端开发新趋势', time: '5分钟前', unread: true },
-        { id: 2, type: 'comment', user: '创意达人', content: '评论了你的帖子', post: '新手入门PS', time: '1小时前', unread: true },
-        { id: 3, type: 'follow', user: '生活美学家', content: '关注了你', time: '昨天', unread: false },
-        { id: 4, type: 'reply', user: '程序员老王', content: '回复了你的评论', time: '2天前', unread: false },
-    ];
-    
-    if (notifications.length === 0) {
-        container.innerHTML = '<div class="p-12 text-center text-gray-400">暂无通知</div>';
-        return;
-    }
-    
-    container.innerHTML = notifications.map(n => `
-        <div class="notification-item ${n.unread ? 'unread' : ''} p-4 hover:bg-light cursor-pointer transition-colors">
-            <div class="flex items-start">
-                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
-                    <i class="fa fa-${getIcon(n.type)}"></i>
-                </div>
-                <div class="flex-1">
-                    <p class="text-gray-800">
-                        <span class="font-medium">${n.user}</span> ${n.content}
-                        ${n.post ? `<span class="text-primary">《${n.post}》</span>` : ''}
+    const c = document.getElementById('content');
+    c.innerHTML = '<div class="text-center py-16 text-gray-400"><i class="fa fa-spinner fa-spin text-2xl"></i></div>';
+    try {
+        const res = await fetch('/api/notifications', { credentials: 'include' });
+        if (res.status === 401) { location.href = '/'; return; }
+        const list = await res.json();
+
+        // 标记已读
+        fetch('/api/notifications/read', { method: 'POST', credentials: 'include' });
+        setTimeout(loadUnreadCount, 500);
+
+        if (!list.length) {
+            c.innerHTML = '<div class="text-center py-16 text-gray-400"><i class="fa fa-bell-o text-4xl mb-3"></i><p>暂无通知</p></div>';
+            return;
+        }
+
+        c.innerHTML = list.map(n => {
+            let text = '';
+            let link = '#';
+            if (n.type === 'comment') {
+                text = '评论了你的帖子';
+                link = `/topic?id=${n.post_id}`;
+            } else if (n.type === 'like') {
+                text = '赞了你的帖子';
+                link = `/topic?id=${n.post_id}`;
+            } else if (n.type === 'follow') {
+                text = '关注了你';
+                link = `/profile?id=${n.sender_id || ''}`;
+            } else if (n.type === 'message') {
+                text = '给你发了私信';
+                link = `/messages?user=${encodeURIComponent(n.sender)}`;
+            }
+            const timeStr = new Date(n.created_at).toLocaleString();
+            const bg = n.is_read ? '' : 'bg-blue-50';
+
+            return `
+            <div class="flex items-start p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 ${bg}">
+                <img src="${escapeHtml(n.sender_avatar)}" class="w-11 h-11 rounded-full cursor-pointer flex-shrink-0"
+                     onclick="event.stopPropagation(); location.href='/profile?id=${n.sender_id || ''}'">
+                <div class="ml-3 flex-1 cursor-pointer" onclick="location.href='${link}'">
+                    <p class="text-sm">
+                        <span class="font-medium">${escapeHtml(n.sender_display)}</span>
+                        <span class="text-gray-600"> ${text}</span>
                     </p>
-                    <span class="text-xs text-gray-400">${n.time}</span>
+                    ${n.content ? `<p class="text-sm text-gray-500 mt-1 line-clamp-2">${escapeHtml(n.content)}</p>` : ''}
+                    <p class="text-xs text-gray-400 mt-1">${timeStr}</p>
                 </div>
-                ${n.unread ? '<span class="w-2 h-2 bg-primary rounded-full"></span>' : ''}
+                <button onclick="deleteNotif(${n.id}, event)" class="text-gray-300 hover:text-red-500 ml-2">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        c.innerHTML = '<div class="text-center py-16 text-red-500">加载失败</div>';
+    }
+}
+
+async function deleteNotif(id, e) {
+    e.stopPropagation();
+    await fetch(`/api/notifications/${id}`, { method: 'DELETE', credentials: 'include' });
+    loadNotifications();
+}
+
+async function loadConversations() {
+    const c = document.getElementById('content');
+    c.innerHTML = '<div class="text-center py-16 text-gray-400"><i class="fa fa-spinner fa-spin text-2xl"></i></div>';
+    try {
+        const res = await fetch('/api/messages', { credentials: 'include' });
+        if (res.status === 401) { location.href = '/'; return; }
+        const list = await res.json();
+        if (!list.length) {
+            c.innerHTML = '<div class="text-center py-16 text-gray-400"><i class="fa fa-envelope-o text-4xl mb-3"></i><p>暂无私信</p><p class="text-xs mt-2">在用户资料页点击"发私信"开始对话</p></div>';
+            return;
+        }
+        c.innerHTML = list.map(conv => `
+            <div class="flex items-center p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer"
+                 onclick="location.href='/messages?user=${encodeURIComponent(conv.username)}'">
+                <img src="${escapeHtml(conv.avatar)}" class="w-12 h-12 rounded-full">
+                <div class="ml-3 flex-1 min-w-0">
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium">${escapeHtml(conv.display_name)}</span>
+                        <span class="text-xs text-gray-400">${new Date(conv.last_time).toLocaleDateString()}</span>
+                    </div>
+                    <p class="text-sm text-gray-500 truncate mt-1">${escapeHtml(conv.last_message)}</p>
+                </div>
+                ${conv.unread > 0 ? `<span class="ml-2 px-2 py-0.5 text-xs bg-red-500 text-white rounded-full">${conv.unread}</span>` : ''}
             </div>
-        </div>
-    `).join('');
-}
-
-function getIcon(type) {
-    const icons = { like: 'heart', comment: 'comment', follow: 'user-plus', reply: 'reply' };
-    return icons[type] || 'bell';
-}
-
-function markAllRead() {
-    alert('已标记全部已读');
-}
-
-function logout() {
-    localStorage.removeItem('currentUser');
-    window.location.href = '/';
-}
-
-window.onload = loadNotifications;
-function toggleUserMenu(event) {
-    if (event) event.stopPropagation();
-    const dropdown = document.getElementById('userDropdown');
-    if (dropdown) {
-        dropdown.classList.toggle('show');
+        `).join('');
+    } catch(e) {
+        c.innerHTML = '<div class="text-center py-16 text-red-500">加载失败</div>';
     }
 }
 
-function goToPage(url) {
-    const dropdown = document.getElementById('userDropdown');
-    if (dropdown) {
-        dropdown.classList.remove('show');
+// 页面加载
+(async () => {
+    const saved = localStorage.getItem('currentUser');
+    if (saved) {
+        try { currentUser = JSON.parse(saved); } catch(e) {}
     }
-    window.location.href = url;
-}
-
-document.addEventListener('click', function(e) {
-    const userMenu = document.getElementById('userMenu');
-    const dropdown = document.getElementById('userDropdown');
-    if (userMenu && dropdown && !userMenu.contains(e.target)) {
-        dropdown.classList.remove('show');
-    }
-});
+    if (!currentUser) { location.href = '/'; return; }
+    document.getElementById('topAvatar').src = currentUser.avatar || `/api/default-avatar?name=${encodeURIComponent(currentUser.username)}`;
+    loadUnreadCount();
+    switchTab('notif');
+})();
 </script>
 </body>
 </html>
