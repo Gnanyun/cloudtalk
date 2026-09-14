@@ -186,6 +186,37 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
 
+    # 通知表
+    c.execute('''CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipient TEXT NOT NULL,
+        sender TEXT NOT NULL,
+        type TEXT NOT NULL,
+        post_id INTEGER,
+        content TEXT DEFAULT '',
+        is_read INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # 私信表
+    c.execute('''CREATE TABLE IF NOT EXISTS private_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        content TEXT NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # 收藏表
+    c.execute('''CREATE TABLE IF NOT EXISTS favorites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        post_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(username, post_id)
+    )''')
+
     # ===== 新增：群组表 =====
     c.execute('''CREATE TABLE IF NOT EXISTS groups_info (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -293,6 +324,22 @@ def enrich_author_info(item_dict, username_field='author'):
         item_dict['author_display'] = username
         item_dict['author_avatar'] = f'/api/default-avatar?name={username}'
     return item_dict
+
+# ---------- 创建通知 ----------
+def create_notification(recipient, sender, notif_type, post_id=None, content=''):
+    """创建通知，不给自己发通知"""
+    if not recipient or not sender or recipient == sender:
+        return
+    try:
+        conn = get_db()
+        conn.execute(
+            'INSERT INTO notifications (recipient, sender, type, post_id, content) VALUES (?, ?, ?, ?, ?)',
+            (recipient, sender, notif_type, post_id, content[:80])
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f'create_notification error: {e}')
 
 # ---------- 管理端鉴权装饰器 ----------
 def admin_required(f):
@@ -594,6 +641,228 @@ def get_topic(topic_id):
     conn.close()
     return jsonify({'status': 'success', 'topic': topic_dict})
 
+# ---------- 收藏接口 ----------
+@app.route('/api/topic/<int:topic_id>/favorite', methods=['POST'])
+@user_required
+def toggle_favorite(topic_id):
+    username = session['username']
+    conn = get_db()
+    existing = conn.execute(
+        'SELECT id FROM favorites WHERE username = ? AND post_id = ?',
+        (username, topic_id)
+    ).fetchone()
+    
+    if existing:
+        conn.execute('DELETE FROM favorites WHERE username = ? AND post_id = ?', (username, topic_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'status': 'success', 'action': 'unfavorited'})
+    else:
+        conn.execute('INSERT INTO favorites (username, post_id) VALUES (?, ?)', (username, topic_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'status': 'success', 'action': 'favorited'})
+
+
+@app.route('/api/topic/<int:topic_id>/favorite-status', methods=['GET'])
+@user_required
+def get_favorite_status(topic_id):
+    username = session['username']
+    conn = get_db()
+    existing = conn.execute(
+        'SELECT id FROM favorites WHERE username = ? AND post_id = ?',
+        (username, topic_id)
+    ).fetchone()
+    conn.close()
+    return jsonify({'favorited': bool(existing)})
+
+
+@app.route('/api/user/<username>/favorites', methods=['GET'])
+@user_required
+def get_user_favorites(username):
+    if username != session['username']:
+        return jsonify({'status': 'error', 'msg': '只能查看自己的收藏'}), 403
+    conn = get_db()
+    posts = conn.execute('''
+        SELECT p.* FROM posts p
+        JOIN favorites f ON p.id = f.post_id
+        WHERE f.username = ?
+        ORDER BY f.created_at DESC
+    ''', (username,)).fetchall()
+    conn.close()
+    result = []
+    for p in posts:
+        d = dict(p)
+        enrich_author_info(d)
+        result.append(d)
+    return jsonify(result)
+
+
+# ---------- 通知接口 ----------
+@app.route('/api/notifications', methods=['GET'])
+@user_required
+def get_notifications():
+    username = session['username']
+    conn = get_db()
+    rows = conn.execute('''
+        SELECT n.*, u.id as sender_id, u.avatar as sender_avatar, u.display_name as sender_display
+        FROM notifications n
+        LEFT JOIN users u ON n.sender = u.username
+        WHERE n.recipient = ?
+        ORDER BY n.created_at DESC
+        LIMIT 100
+    ''', (username,)).fetchall()
+    conn.close()
+    
+    result = []
+    for r in rows:
+        d = dict(r)
+        d['sender_avatar'] = d['sender_avatar'] or f'/api/default-avatar?name={d["sender"]}'
+        d['sender_display'] = d['sender_display'] or d['sender']
+        result.append(d)
+    return jsonify(result)
+
+
+@app.route('/api/notifications/unread-count', methods=['GET'])
+@user_required
+def get_unread_notification_count():
+    username = session['username']
+    conn = get_db()
+    notif_count = conn.execute(
+        'SELECT COUNT(*) FROM notifications WHERE recipient = ? AND is_read = 0',
+        (username,)
+    ).fetchone()[0]
+    msg_count = conn.execute(
+        'SELECT COUNT(*) FROM private_messages WHERE recipient = ? AND is_read = 0',
+        (username,)
+    ).fetchone()[0]
+    conn.close()
+    return jsonify({
+        'unread_notifications': notif_count,
+        'unread_messages': msg_count,
+        'total': notif_count + msg_count
+    })
+
+
+@app.route('/api/notifications/read', methods=['POST'])
+@user_required
+def mark_notifications_read():
+    username = session['username']
+    conn = get_db()
+    conn.execute('UPDATE notifications SET is_read = 1 WHERE recipient = ?', (username,))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
+
+
+@app.route('/api/notifications/<int:notif_id>', methods=['DELETE'])
+@user_required
+def delete_notification(notif_id):
+    username = session['username']
+    conn = get_db()
+    conn.execute('DELETE FROM notifications WHERE id = ? AND recipient = ?', (notif_id, username))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
+
+
+# ---------- 私信接口 ----------
+@app.route('/api/messages', methods=['GET'])
+@user_required
+def get_conversations():
+    username = session['username']
+    conn = get_db()
+    rows = conn.execute('''
+        SELECT 
+            CASE WHEN sender = ? THEN recipient ELSE sender END as other,
+            MAX(created_at) as last_time,
+            SUM(CASE WHEN recipient = ? AND is_read = 0 THEN 1 ELSE 0 END) as unread
+        FROM private_messages
+        WHERE sender = ? OR recipient = ?
+        GROUP BY other
+        ORDER BY last_time DESC
+    ''', (username, username, username, username)).fetchall()
+    
+    result = []
+    for r in rows:
+        other = r['other']
+        u = conn.execute('SELECT id, display_name, avatar FROM users WHERE username = ?', (other,)).fetchone()
+        last_msg = conn.execute('''
+            SELECT content, created_at FROM private_messages
+            WHERE (sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)
+            ORDER BY created_at DESC LIMIT 1
+        ''', (username, other, other, username)).fetchone()
+        
+        result.append({
+            'username': other,
+            'user_id': u['id'] if u else None,
+            'display_name': (u['display_name'] if u and u['display_name'] else other),
+            'avatar': (u['avatar'] if u and u['avatar'] else f'/api/default-avatar?name={other}'),
+            'last_message': last_msg['content'] if last_msg else '',
+            'last_time': last_msg['created_at'] if last_msg else r['last_time'],
+            'unread': r['unread'] or 0
+        })
+    
+    conn.close()
+    return jsonify(result)
+
+
+@app.route('/api/messages/<username>', methods=['GET'])
+@user_required
+def get_chat_with(username):
+    me = session['username']
+    conn = get_db()
+    rows = conn.execute('''
+        SELECT * FROM private_messages
+        WHERE (sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)
+        ORDER BY created_at ASC
+        LIMIT 200
+    ''', (me, username, username, me)).fetchall()
+    
+    # 标记为已读
+    conn.execute(
+        'UPDATE private_messages SET is_read = 1 WHERE sender = ? AND recipient = ?',
+        (username, me)
+    )
+    conn.commit()
+    conn.close()
+    
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/messages/<username>', methods=['POST'])
+@user_required
+def send_message(username):
+    me = session['username']
+    data = request.get_json()
+    content = data.get('content', '').strip()
+    
+    if not content:
+        return jsonify({'status': 'error', 'msg': '消息不能为空'}), 400
+    ok, msg = validate_length(content, 1, 500)
+    if not ok:
+        return jsonify({'status': 'error', 'msg': msg}), 400
+    
+    if username == me:
+        return jsonify({'status': 'error', 'msg': '不能给自己发消息'}), 400
+    
+    conn = get_db()
+    target = conn.execute('SELECT username FROM users WHERE username = ?', (username,)).fetchone()
+    if not target:
+        conn.close()
+        return jsonify({'status': 'error', 'msg': '用户不存在'}), 404
+    
+    conn.execute(
+        'INSERT INTO private_messages (sender, recipient, content) VALUES (?, ?, ?)',
+        (me, username, content)
+    )
+    conn.commit()
+    conn.close()
+    
+    create_notification(username, me, 'message', None, content)
+    
+    return jsonify({'status': 'success', 'msg': '发送成功'})
+
 # ---------- 增加浏览量 ----------
 @app.route('/api/topic/<int:topic_id>/view', methods=['POST'])
 def increase_view(topic_id):
@@ -642,8 +911,16 @@ def like_topic(topic_id):
         conn.execute('INSERT INTO post_likes (post_id, username) VALUES (?, ?)',
                     (topic_id, username))
         conn.execute('UPDATE posts SET likes = likes + 1 WHERE id = ?', (topic_id,))
+        
+        # 给帖子作者发通知
+        post_row = conn.execute('SELECT author FROM posts WHERE id = ?', (topic_id,)).fetchone()
+        
         conn.commit()
         conn.close()
+        
+        if post_row:
+            create_notification(post_row['author'], username, 'like', topic_id)
+        
         return jsonify({'status': 'success', 'action': 'liked'})
 
 # ---------- 获取评论 ----------
@@ -723,8 +1000,15 @@ def add_comment(topic_id):
         
         # 更新帖子的评论数
         conn.execute('UPDATE posts SET comments = comments + 1 WHERE id = ?', (topic_id,))
+        
+        # 给帖子作者发通知
+        post_row = conn.execute('SELECT author FROM posts WHERE id = ?', (topic_id,)).fetchone()
+        
         conn.commit()
         conn.close()
+        
+        if post_row:
+            create_notification(post_row['author'], author, 'comment', topic_id, content)
         
         return jsonify({'status': 'success', 'msg': '评论成功'})
     except Exception as e:
@@ -761,6 +1045,10 @@ def follow_user():
         conn.execute('INSERT INTO follows (follower, following) VALUES (?, ?)',
                     (follower, following))
         conn.commit()
+        
+        # 给被关注者发通知
+        create_notification(following, follower, 'follow')
+        
         return jsonify({'status': 'success', 'msg': '关注成功', 'action': 'followed'})
     except sqlite3.IntegrityError:
         # 已关注，取消关注
@@ -879,6 +1167,10 @@ def notifications_page():
 def settings_page():
     return send_from_directory('static', 'settings.html')
 
+@app.route('/messages')
+def messages_page():
+    return send_from_directory('static', 'messages.html')
+
 # ---------- 获取用户的帖子/评论/点赞/关注 ----------
 @app.route('/api/user/<username>/<tab>', methods=['GET'])
 def get_user_tab_content(username, tab):
@@ -932,6 +1224,23 @@ def get_user_tab_content(username, tab):
             (username,)
         ).fetchall()
         result = [dict(p) for p in posts]
+
+    elif tab == 'favorites':
+        if username != session.get('username'):
+            conn.close()
+            return jsonify({'status': 'error', 'msg': '只能查看自己的收藏'}), 403
+        posts = conn.execute('''
+            SELECT p.* FROM posts p
+            JOIN favorites f ON p.id = f.post_id
+            WHERE f.username = ?
+            ORDER BY f.created_at DESC
+        ''', (username,)).fetchall()
+        result = []
+        for p in posts:
+            d = dict(p)
+            enrich_author_info(d)
+            result.append(d)
+
     elif tab == 'follows':
         conn.execute('''CREATE TABLE IF NOT EXISTS follows (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
