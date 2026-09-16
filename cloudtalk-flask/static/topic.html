@@ -60,6 +60,22 @@
     </div>
 </div>
 
+<!-- 编辑帖子模态框 -->
+<div id="editPostModal" class="modal">
+    <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 relative">
+        <button onclick="closeModal('editPost')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa fa-times"></i></button>
+        <h2 class="text-xl font-bold mb-4">编辑帖子</h2>
+        <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-2">选择分类</label>
+            <div class="flex flex-wrap gap-2" id="editCategoryTags"></div>
+        </div>
+        <input type="text" id="editPostTitle" placeholder="标题" class="w-full px-4 py-2 border rounded-lg mb-3">
+        <textarea id="editPostContent" rows="5" class="w-full px-4 py-2 border rounded-lg mb-3"></textarea>
+        <button id="saveEditPostBtn" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">保存</button>
+    </div>
+</div>
+
+
 <!-- 注册模态框 -->
 <div id="registerModal" class="modal">
     <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 relative">
@@ -419,6 +435,12 @@ function renderTopicContent() {
                     <i class="fa ${isLiked ? 'fa-heart' : 'fa-heart-o'} text-xl"></i>
                     <span id="likeCount" class="font-medium">${topic.likes || 0}</span>
                 </button>
+
+                <button id="editTopicBtn" class="hidden flex items-center space-x-1 text-gray-500 hover:text-blue-500 transition-colors" onclick="editCurrentTopic()">
+                    <i class="fa fa-pencil text-xl"></i>
+                    <span class="hidden sm:inline">编辑</span>
+                </button>
+
                 <button id="favoriteBtn" class="flex items-center space-x-1 text-gray-500 hover:text-yellow-500 transition-colors" onclick="handleFavorite()">
                     <i class="fa fa-bookmark-o text-xl"></i>
                     <span class="hidden sm:inline">收藏</span>
@@ -438,6 +460,12 @@ function renderTopicContent() {
             `).join('') : ''}
         </div>
     `;
+    
+    // 如果当前用户是作者，显示编辑按钮
+    if (currentUser && currentUser.username === topic.author) {
+        const btn = document.getElementById('editTopicBtn');
+        if (btn) btn.classList.remove('hidden');
+    }
 }
 
 // 渲染发布者卡片
@@ -550,6 +578,94 @@ async function loadComments() {
         container.innerHTML = '<p class="text-red-500 text-center py-8">加载评论失败，请刷新重试</p>';
     }
 }
+
+// ---------- 编辑帖子 ----------
+let editSelectedTags = [];
+let editCategoryOptions = ['技术', '创意', '生活', '问答', '其他'];
+
+function editCurrentTopic() {
+    if (!currentTopic) return;
+    const topic = currentTopic;
+    
+    document.getElementById('editPostTitle').value = topic.title || '';
+    document.getElementById('editPostContent').value = topic.content || '';
+    
+    // 解析 tags（后端 topic.tags 可能是数组或字符串）
+    let rawTags = topic.tags;
+    if (Array.isArray(rawTags)) {
+        editSelectedTags = rawTags.slice();
+    } else if (typeof rawTags === 'string') {
+        editSelectedTags = rawTags.split(',').map(t => t.trim()).filter(t => t);
+    } else {
+        editSelectedTags = ['其他'];
+    }
+    if (editSelectedTags.length === 0) editSelectedTags = ['其他'];
+    
+    // 从服务端拉一次分类
+    fetch('/api/categories')
+        .then(r => r.json())
+        .then(cats => {
+            if (Array.isArray(cats) && cats.length) editCategoryOptions = cats;
+            renderEditCategoryTags();
+        })
+        .catch(() => renderEditCategoryTags());
+    
+    openModal('editPost');
+}
+
+function renderEditCategoryTags() {
+    const container = document.getElementById('editCategoryTags');
+    if (!container) return;
+    container.innerHTML = editCategoryOptions.map(cat => {
+        const isSelected = editSelectedTags.includes(cat);
+        return `<span class="px-3 py-1 rounded-full text-sm cursor-pointer transition-colors ${isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" onclick="toggleEditTag('${cat}')">${cat}</span>`;
+    }).join('');
+}
+
+function toggleEditTag(tag) {
+    if (editSelectedTags.includes(tag)) {
+        editSelectedTags = editSelectedTags.filter(t => t !== tag);
+    } else {
+        editSelectedTags.push(tag);
+    }
+    if (editSelectedTags.length === 0) editSelectedTags = ['其他'];
+    renderEditCategoryTags();
+}
+
+document.getElementById('saveEditPostBtn').addEventListener('click', async () => {
+    if (!topicId) return;
+    const title = document.getElementById('editPostTitle').value.trim();
+    const content = document.getElementById('editPostContent').value.trim();
+    if (!title || !content) return alert('标题和内容不能为空');
+    
+    const btn = document.getElementById('saveEditPostBtn');
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+    
+    try {
+        const res = await fetch(`/api/posts/${topicId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                tags: editSelectedTags.join(',')
+            })
+        });
+        const data = await res.json();
+        alert(data.msg);
+        if (data.status === 'success') {
+            closeModal('editPost');
+            loadTopic();  // 重新加载帖子详情
+        }
+    } catch (e) {
+        alert('保存失败，请重试');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '保存';
+    }
+});
+
 
 // 处理点赞
 async function handleLike(topicId) {
